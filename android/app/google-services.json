@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "704594224764",
+    "project_id": "pitchoune-timer",
+    "storage_bucket": "pitchoune-timer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:704594224764:android:ce43b3a5d5d965ee31cbf9",
+        "android_client_info": {
+          "package_name": "com.example.pitchoune_timer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXSfEc-i-8iNiIqMw5LxANdrlxS-G_fnk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:704594224764:android:2571e2d5e341d58c31cbf9",
+        "android_client_info": {
+          "package_name": "fr.pitchoune.timer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXSfEc-i-8iNiIqMw5LxANdrlxS-G_fnk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

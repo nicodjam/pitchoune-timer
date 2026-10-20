@@ -1,0 +1,9 @@
+# Static analysis rules used by `flutter analyze` and by the IDE.
+# See https://dart.dev/tools/analysis
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**

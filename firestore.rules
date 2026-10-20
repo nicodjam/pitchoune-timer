@@ -1,0 +1,54 @@
+rules_version = '2';
+
+// Pitchoune Timer — Cloud Firestore security rules.
+// Paste them in the Firebase console (Firestore Database → Rules → Publish).
+//
+// Data layout:
+//   families/{familyId}                     the family code is the document id
+//   families/{familyId}/members/{uid}       one document per device (anonymous user)
+//   families/{familyId}/children/{childId}  the children and their time banks
+//
+// Access model: every device signs in anonymously. A device that knows the
+// family code can join the family (create its own member document); only
+// members can read or change the children. Families cannot be listed, so a
+// code cannot be discovered by browsing.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(familyId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid));
+    }
+
+    function validChild(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 20
+        && data.avatar is string && data.avatar.size() <= 16
+        && data.colorIndex is int
+        && data.seconds is int && data.seconds <= 24 * 3600;
+    }
+
+    match /families/{familyId} {
+      // "get" is needed to check that a code exists before joining; no "list".
+      allow get: if signedIn();
+      allow create: if signedIn() && familyId.size() == 12;
+      allow update, delete: if isMember(familyId);
+
+      match /members/{uid} {
+        // A device may only add or remove itself, and only in an existing family.
+        allow create: if signedIn() && request.auth.uid == uid
+          && exists(/databases/$(database)/documents/families/$(familyId));
+        allow delete: if signedIn() && request.auth.uid == uid;
+        allow read: if isMember(familyId);
+      }
+
+      match /children/{childId} {
+        allow read, delete: if isMember(familyId);
+        allow create, update: if isMember(familyId) && validChild(request.resource.data);
+      }
+    }
+  }
+}
