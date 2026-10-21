@@ -14,6 +14,7 @@ import 'parent.dart';
 import 'screen.dart';
 import 'settings.dart';
 import 'settings_screen.dart';
+import 'setup_screen.dart';
 import 'theme.dart';
 import 'timer_screen.dart';
 
@@ -157,6 +158,11 @@ class _FamilyHomeState extends State<_FamilyHome> {
       if (!mounted) return;
       setState(() => _ready = true);
       _syncChildMode();
+      // Every permission asked at once, as soon as the app starts.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final navigator = navigatorKey.currentState;
+        if (navigator != null) showSetupIfNeeded(navigator, childMode: _childModeId != null);
+      });
       // A countdown was running when Android killed the app (or the alarm has
       // just relaunched it): reopen its screen straight away. In child mode,
       // the root timer screen resumes it itself (see build).

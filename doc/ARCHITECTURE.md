@@ -58,7 +58,7 @@ pitchoune_timer/
 │   ├── parent.dart           Parent code, parent mode (ParentLock), keypad
 │   ├── settings.dart         DeviceSettings: this tablet account's mode (parent / child)
 │   ├── settings_screen.dart  Settings screen (parent code)
-│   ├── permissions.dart      Android permission requests, shared by the screens
+│   ├── setup_screen.dart     Every Android permission on one screen (Setup)
 │   ├── timer_screen.dart     A child's countdown
 │   ├── effects.dart          Reusable visual widgets (title, bubbles, confetti, buttons)
 │   ├── theme.dart            Colors, avatars, formatting functions
@@ -345,8 +345,6 @@ store through `ListenableBuilder`.
   `TextEditingController`** and releases it in `dispose()`. Releasing it right
   after `showDialog` would cause an error, because the dialog still uses it
   during its closing animation.
-- Before opening a timer, `_checkPermission` offers, once per app launch, to
-  allow display over other apps.
 
 **Parent mode.** Changing a bank (− and +), resetting it to zero and deleting a
 child need the parent code. Locked, a card shows a single 🔒 button instead of
@@ -539,16 +537,39 @@ Reached with the ⚙ button, after the parent code: from the home screen in
 parent mode, from the *choose* phase of the timer in child mode.
 
 - **Who uses this tablet account?** A `SegmentedButton` *Parent* / *Child*.
-- **Home screen** (child mode): says whether Pitchoune Timer is the home
-  screen of this account (`Screen.isHome`), and if not, a button opens the
-  system screen where it is chosen (`Settings.ACTION_HOME_SETTINGS`). The card
-  checks again when the app comes back from that screen
-  (`didChangeAppLifecycleState`).
+- **Permissions and setup**: opens `SetupScreen` (§4.6). Switching to child
+  mode opens it at once, since child mode needs one more thing (home screen).
 - **Which child?** In child mode, one radio button per child (`RadioGroup`),
   with their avatar and bank.
 
 Every change is saved at once and applied at once: the root screen behind the
 settings is already the new one when the parent comes back.
+
+### 4.6 `SetupScreen` — `lib/setup_screen.dart`
+
+Everything Pitchoune Timer needs from Android, **on one screen, asked once
+when the app is set up** rather than at different moments of its use:
+
+| Line | Checked with | Opened with |
+|---|---|---|
+| Display over other apps | `Alarm.hasPermission` | system settings of the permission |
+| Put the tablet to sleep (device administrator) | `Screen.canSleep` | device admin activation screen |
+| Notifications | `Screen.canNotify` | system prompt (twice at most), then the app's notification settings |
+| No battery restriction | `Screen.batteryUnrestricted` | `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` dialog |
+| Home screen of this account (child mode only) | `Screen.isHome` | `ACTION_HOME_SETTINGS` |
+
+- Each line is a small record of two functions (`check`, `ask`), so the list
+  is data and the screen is a loop over it.
+- The screen checks every line again when the app comes back to the front
+  (`didChangeAppLifecycleState`), so a ✓ appears as soon as the parent returns
+  from a system screen.
+- `showSetupIfNeeded` opens it from `_FamilyHome` as soon as the app has
+  started, if a line is missing, **at most once per app launch** ("Later"
+  leaves it for the next launch). It is always reachable from the settings.
+- In child mode the guard window is active behind it, and would cover the
+  system screens it opens: while `SetupScreen` or `SettingsScreen` is open,
+  the guard is suspended (`Screen.suspendGuard`, a counter since the two
+  screens can be stacked; `Guard.suspended` on the native side).
 
 ---
 
@@ -720,16 +741,21 @@ Since Android 13, posting notifications needs a runtime permission
 
 | Permission | Kind | Used for | Asked |
 |---|---|---|---|
-| `SYSTEM_ALERT_WINDOW` "Display over other apps" | Special (settings screen) | Coming to the front at the end; guard window | Dialog on the home screen, then system settings |
-| Device administrator, `force-lock` only | Special (activation screen) | Sleep | Dialog on the home screen, then activation screen |
-| `POST_NOTIFICATIONS` | Runtime (system prompt) | Countdown in the status bar | Dialog on the home screen, then system prompt |
+| `SYSTEM_ALERT_WINDOW` "Display over other apps" | Special (settings screen) | Coming to the front at the end; guard window | Setup screen |
+| Device administrator, `force-lock` only | Special (activation screen) | Sleep | Setup screen |
+| `POST_NOTIFICATIONS` | Runtime (system prompt) | Countdown in the status bar | Setup screen |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Normal, then a system dialog | Alarms and child mode not stopped in the background | Setup screen |
 | `USE_EXACT_ALARM` (13+), `SCHEDULE_EXACT_ALARM` (≤ 12) | Normal / granted at install | Alarm on time, even in Doze | Never |
 | `RECEIVE_BOOT_COMPLETED` | Normal | Child mode: reopen the app after a restart | Never |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Normal | Child mode: the service that listens to unlocks | Never |
 | `POST_PROMOTED_NOTIFICATIONS` | Normal | Live Update chip | Never |
 
-The home screen asks for at most **one** of them per countdown start, and each
-at most once per app launch.
+The setup screen (§4.6) groups every request, at the first launch (and at the
+next ones while something is missing).
+
+**`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`** lets the app ask directly for the
+battery exemption. Google Play only accepts it for some kinds of apps; outside
+the Play Store, it is fine.
 
 **`USE_EXACT_ALARM`** is granted automatically, but Google Play reserves it for
 alarm-clock or timer apps. For a Play Store release, it would have to be
@@ -958,7 +984,7 @@ the status bar during a `flutter run`.
 | `StatelessWidget` / `StatefulWidget`, `setState` | `HomeScreen` (stateless), `TimerScreen` (stateful) |
 | `ChangeNotifier` + `ListenableBuilder`, `Listenable.merge` | `ChildrenStore`, `ParentLock`, `FamilyService`; `HomeScreen.build` |
 | Streams and subscriptions | `ChildrenStore.load` (Firestore `snapshots()`) |
-| `Future`, `async`/`await`, `then`, `mounted` checks | `FamilyScreen._run`, `HomeScreen._checkPermissions`, `TimerScreen._stop` |
+| `Future`, `async`/`await`, `then`, `mounted` checks | `FamilyScreen._run`, `SetupScreen._refresh`, `TimerScreen._stop` |
 | Interfaces and dependency injection | `ChildrenBackend`, `FirestoreBackend`, `MemoryBackend` |
 | Records and patterns, `switch` expressions | `TimerScreen._finishedControls`, `TimerScreen._message` |
 | Implicit animations | `AnimatedScale`, `AnimatedSwitcher`, `AnimatedContainer` in the cards and dialogs |
@@ -970,7 +996,7 @@ the status bar during a `flutter run`.
 | Unit and widget tests, fakes | `test/widget_test.dart` with `MemoryBackend` |
 | Enums and their `.name` (stored as text) | `DeviceMode` in `settings.dart` |
 | Swapping the root screen from a setting | `_FamilyHome.build` (`ListenableBuilder` on `DeviceSettings`) |
-| Top-level functions and file-private globals | `permissions.dart` (`checkPermissions`, `_overlayAsked`) |
+| Top-level functions and file-private globals | `setup_screen.dart` (`showSetupIfNeeded`, `_shownThisLaunch`) |
 
 ---
 

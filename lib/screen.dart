@@ -81,6 +81,30 @@ class Screen {
     }
   }
 
+  /// Is the app exempt from battery optimisations ("Unrestricted" on Samsung)?
+  static Future<bool> batteryUnrestricted() async {
+    if (!available) return true;
+    try {
+      return await _channel.invokeMethod<bool>('isBatteryUnrestricted') ?? false;
+    } catch (e) {
+      debugPrint('Screen.batteryUnrestricted: $e');
+      return true;
+    }
+  }
+
+  /// Asks Android to exempt the app from battery optimisations.
+  static Future<void> requestBatteryUnrestricted() => _call('requestBatteryUnrestricted');
+
+  static int _guardSuspensions = 0;
+
+  /// While a setup or settings screen is open, the guard window must not
+  /// cover the system screens it opens. Calls are counted (screens nest).
+  static Future<void> suspendGuard(bool on) {
+    _guardSuspensions += on ? 1 : -1;
+    if (_guardSuspensions < 0) _guardSuspensions = 0;
+    return _call('suspendGuard', {'on': _guardSuspensions > 0});
+  }
+
   /// Opens the system screen where the home app is chosen.
   static Future<void> openHomeSettings() => _call('openHomeSettings');
 

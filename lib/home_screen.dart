@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'child.dart';
 import 'effects.dart';
 import 'parent.dart';
-import 'permissions.dart';
 import 'theme.dart';
 import 'timer_screen.dart';
 
@@ -44,7 +43,7 @@ class HomeScreen extends StatelessWidget {
       ..showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> _start(BuildContext context, Child c) async {
+  void _start(BuildContext context, Child c) {
     if (c.runningElsewhere(store.deviceId)) {
       _snack(context, "${c.name}'s timer is already running on another device.");
       return;
@@ -53,8 +52,6 @@ class HomeScreen extends StatelessWidget {
       _snack(context, '${c.name} has no time left. A parent can add minutes.');
       return;
     }
-    await checkPermissions(context);
-    if (!context.mounted) return;
     Navigator.of(context).push(timerRoute(store, c.id, parent: parent));
   }
 

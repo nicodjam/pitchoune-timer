@@ -1,10 +1,12 @@
 package com.example.pitchoune_timer
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
@@ -110,8 +112,19 @@ class MainActivity : FlutterActivity() {
                     }.start()
                     "launchApp" -> result.success(Apps.launch(this, call.argument<String>("package")!!))
                     "requestNotify" -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        // Android shows its prompt at most twice; after that,
+                        // only the app's notification settings can change it.
+                        val prefs = getSharedPreferences("pitchoune_setup", MODE_PRIVATE)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            prefs.getInt("notifyAsked", 0) < 2
+                        ) {
+                            prefs.edit().putInt("notifyAsked", prefs.getInt("notifyAsked", 0) + 1).apply()
                             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 42)
+                        } else {
+                            startActivity(
+                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                            )
                         }
                         result.success(null)
                     }
@@ -132,6 +145,23 @@ class MainActivity : FlutterActivity() {
                         )
                         // Countdown ended while another app was in front: cover it now.
                         if (on && !visible) Guard.show(this)
+                        result.success(null)
+                    }
+                    // Setup or settings screen open: no guard over the system screens.
+                    "suspendGuard" -> {
+                        Guard.suspended = call.argument<Boolean>("on") == true
+                        result.success(null)
+                    }
+                    "isBatteryUnrestricted" -> result.success(
+                        getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
+                    )
+                    "requestBatteryUnrestricted" -> {
+                        @SuppressLint("BatteryLife") // not on the Play Store; needed for child mode
+                        val intent = Intent(
+                            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:$packageName")
+                        )
+                        startActivity(intent)
                         result.success(null)
                     }
                     "requestSleepPermission" -> {

@@ -9,7 +9,6 @@ import 'apps.dart';
 import 'child.dart';
 import 'effects.dart';
 import 'parent.dart';
-import 'permissions.dart';
 import 'screen.dart';
 import 'theme.dart';
 
@@ -143,10 +142,8 @@ class _TimerScreenState extends State<TimerScreen>
       _chosen = min(_defaultChoice, _bank);
       if (widget.standalone) {
         // Child mode: the child stays in the app until they start a countdown.
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          if (!mounted) return;
-          _hold();
-          await checkPermissions(context); // the guard needs "Display over other apps"
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _hold();
         });
       }
       return;
@@ -238,17 +235,15 @@ class _TimerScreenState extends State<TimerScreen>
     setState(() => _chosen = (_chosen + minutes * 60).clamp(min(60, bank), bank));
   }
 
-  /// "Start" in the choose phase. In child mode, nothing asked for the
-  /// permissions before (no home screen): ask here.
-  Future<void> _start() async {
+  /// "Start" in the choose phase.
+  void _start() {
     if (_child.runningElsewhere(widget.store.deviceId)) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("${_child.name}'s timer is already running on another device."),
       ));
       return;
     }
-    if (widget.standalone) await checkPermissions(context);
-    if (mounted) _withdraw(_chosen);
+    _withdraw(_chosen);
   }
 
   /// Leaves a finished or stopped countdown: back to the home screen, or in

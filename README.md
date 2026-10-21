@@ -109,13 +109,17 @@ On first launch, a device either **creates a family** or **joins** one by
 typing its family code (shown by the family button on the home screen of a
 device that is already set up).
 
-On Android, accept the three requests offered when countdowns are started:
+On Android, a **Setup** screen lists everything to allow, as soon as the app
+starts (and in ⚙ → *Permissions and setup*):
 - "Display over other apps": the end of a countdown shows up over other apps,
   and the child cannot leave a paused or ended countdown;
 - device administrator (lock the screen only): the tablet goes to sleep when
   the child stops or the bank is empty;
 - notifications: the minutes left are shown in the status bar during a
-  countdown.
+  countdown;
+- no battery restriction: alarms and child mode keep working in the
+  background;
+- in child mode, the home screen of the account.
 
 Bank changes, the settings, and leaving a paused or ended countdown need the
 parent code.

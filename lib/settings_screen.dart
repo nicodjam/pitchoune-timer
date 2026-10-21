@@ -4,13 +4,36 @@ import 'child.dart';
 import 'effects.dart';
 import 'screen.dart';
 import 'settings.dart';
+import 'setup_screen.dart';
 import 'theme.dart';
 
 /// Settings of this tablet account. Only reachable with the parent code.
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.settings, required this.store});
   final DeviceSettings settings;
   final ChildrenStore store;
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  DeviceSettings get settings => widget.settings;
+  ChildrenStore get store => widget.store;
+
+  // In child mode the guard is active behind this screen: keep it off while
+  // a parent is here (the setup opens system screens).
+  @override
+  void initState() {
+    super.initState();
+    Screen.suspendGuard(true);
+  }
+
+  @override
+  void dispose() {
+    Screen.suspendGuard(false);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +84,8 @@ class SettingsScreen extends StatelessWidget {
                     // exists, otherwise take the first.
                     final keep = settings.childId != null && store.byId(settings.childId!) != null;
                     settings.setChildMode(keep ? settings.childId! : children.first.id);
+                    // Child mode needs more (home screen): set it up now.
+                    showSetupIfNeeded(Navigator.of(context), childMode: true, force: true);
                   }
                 },
               ),
@@ -80,9 +105,23 @@ class SettingsScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700),
                 ),
               ],
+              const SizedBox(height: 20),
+              Card(
+                color: Colors.white,
+                child: ListTile(
+                  leading: const Icon(Icons.verified_user_rounded, color: kPurple),
+                  title: const Text(
+                    'Permissions and setup',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: const Text('Everything Android must allow, on one screen'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => SetupScreen(childMode: childMode),
+                  )),
+                ),
+              ),
               if (childMode) ...[
-                const SizedBox(height: 28),
-                const _HomeScreenCard(),
                 const SizedBox(height: 28),
                 const Text(
                   'Which child?',
@@ -114,98 +153,6 @@ class SettingsScreen extends StatelessWidget {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-/// Child mode: makes Pitchoune Timer the home screen of this tablet account,
-/// so that Android opens it at login, on the Home button, and when the child
-/// leaves another app.
-class _HomeScreenCard extends StatefulWidget {
-  const _HomeScreenCard();
-
-  @override
-  State<_HomeScreenCard> createState() => _HomeScreenCardState();
-}
-
-class _HomeScreenCardState extends State<_HomeScreenCard> with WidgetsBindingObserver {
-  bool? _isHome;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _check();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  // Back from the system settings: check again.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _check();
-  }
-
-  Future<void> _check() async {
-    // The home activity is enabled just before: give Android a moment.
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    final isHome = await Screen.isHome();
-    if (mounted) setState(() => _isHome = isHome);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isHome = _isHome;
-    return Card(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  isHome == true ? Icons.check_circle_rounded : Icons.home_rounded,
-                  color: isHome == true ? Colors.green : kInk,
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Home screen',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kInk),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              switch (isHome) {
-                null => 'Checking…',
-                true => 'Pitchoune Timer is the home screen of this account: it opens at '
-                    'login, on the Home button and when an app is closed. The child opens '
-                    'their apps from it ("My apps") while a countdown runs.',
-                false => 'Make Pitchoune Timer the home screen of this account, so that it '
-                    'opens at login after a restart, on the Home button and when an app is '
-                    'closed. In the next screen, choose "Pitchoune Timer".',
-              },
-              style: const TextStyle(color: Colors.black54),
-            ),
-            if (isHome == false) ...[
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: Screen.openHomeSettings,
-                icon: const Icon(Icons.home_rounded),
-                label: const Text('Choose the home screen'),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }

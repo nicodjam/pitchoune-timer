@@ -10,6 +10,10 @@ On the Android tablet or phone:
 
 1. Open the invitation email **on that device** and tap **Get started**.
    Sign in with the Google account the invitation was sent to.
+   - On a **tablet**, if the page says to open the email on a mobile device:
+     Chrome is showing the *desktop site* (its default on large screens). In
+     Chrome, menu **⋮** → untick **Desktop site**; the page reloads and
+     offers the installation.
 2. Follow the link to download **App Tester** (Firebase's small installer
    app), or download the app directly from the web page.
 3. Android asks to allow installing apps from this source: **Settings →
@@ -27,13 +31,17 @@ On the Android tablet or phone:
 - Add the children (name, avatar, color) and their minutes. Changing a bank
   needs the **parent code: 728**.
 
-The first time a countdown starts, the app asks for three permissions; accept
-all three:
+As soon as the app starts, a **Setup** screen lists what Android must allow.
+Tap **Allow** on each line, accept in the screen that opens, then come back:
+the line gets a green ✓.
 - **Display over other apps:** the end of a countdown shows up over other
   apps, and the child cannot leave a paused or ended countdown;
-- **Device administrator** (screen lock only): the tablet goes to sleep when
+- **Put the tablet to sleep** ("device administrator", screen lock only): when
   the child chooses *Stop* or when the bank is empty;
-- **Notifications:** the time left in the status bar.
+- **Notifications:** the time left in the status bar;
+- **No battery restriction:** alarms keep working in the background.
+
+The same screen is in ⚙ (parent code) → **Permissions and setup**.
 
 ## 3. A tablet with a child account (optional)
 
@@ -46,12 +54,10 @@ their timer. In the **child's account**:
    it from the invitation as above.
 2. Open Pitchoune Timer once, join the family (same family code).
 3. ⚙ (parent code) → **Child** → choose the child.
-4. Still in the settings, **Home screen → Choose the home screen →
-   Pitchoune Timer**. The app then opens after a restart and on the Home
-   button, and the child opens their apps from it (*My apps*, during a
-   countdown).
-5. Accept the three permissions, and set the battery usage to
-   **Unrestricted**: Settings → Apps → Pitchoune Timer → Battery.
+4. The **Setup** screen opens: allow every line, including **Home screen of
+   this account** (choose "Pitchoune Timer"). The app then opens after a
+   restart and on the Home button, and the child opens their apps from it
+   (*My apps*, during a countdown).
 
 Each account keeps its own settings: the owner account stays in parent mode
 with its usual home screen.

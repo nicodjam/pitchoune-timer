@@ -31,6 +31,10 @@ object Guard {
     var active = false
         private set
 
+    /** The parent is on the setup or settings screen, which opens system
+     *  screens: the window must not cover them. */
+    var suspended = false
+
     private var view: View? = null
 
     /** Texts of the window, given by the Dart code for each situation. */
@@ -47,7 +51,7 @@ object Guard {
 
     /** Called when the app goes to the background. */
     fun show(context: Context) {
-        if (!active) return
+        if (!active || suspended) return
         showWindow(context, title, message)
     }
 
