@@ -98,11 +98,9 @@ class _TimerScreenState extends State<TimerScreen>
   bool _finishedUnseen = false; // the countdown ended while the app was hidden
   bool _returnAfterChoice = false; // go back to the previous app after "take more"
   bool _resumedAfterKill = false; // started by main() after Android killed the app
-  bool _sleepAllowed = false; // the app may put the device to sleep
   bool _blocked = false; // the child must act before leaving the app
   bool _parentAway = false; // child mode: a parent unlocked the app to leave it
   bool _wentAway = false; // the app went to the background since then
-  Timer? _sleepTicker; // refreshes the "going to sleep in N s" message
 
   // The avatar bounces during the countdown; the gauge "beats" in the last minute.
   late final AnimationController _bounce =
@@ -120,23 +118,12 @@ class _TimerScreenState extends State<TimerScreen>
 
   bool get _counting => _phase == _Phase.running || _phase == _Phase.paused;
 
-  /// This countdown withdraws everything left: the bank will be empty at the end.
-  bool get _emptiesBank => _total >= _balanceAtStart;
-
-  /// When the device goes to sleep, for a countdown that empties the bank.
-  DateTime? get _sleepAt => _end?.add(Alarm.sleepDelay);
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _lastChild = widget.store.byId(widget.childId)!;
     widget.store.addListener(_onStoreChanged);
-    // May "Stop" put the tablet to sleep? (device administrator right)
-    Screen.canSleep().then((ok) {
-      if (mounted) setState(() => _sleepAllowed = ok);
-    });
-
     final resume = widget.resume;
     if (resume == null) {
       _chosen = min(_defaultChoice, _bank);
@@ -176,7 +163,6 @@ class _TimerScreenState extends State<TimerScreen>
     widget.store.removeListener(_onStoreChanged);
     if (_blocked) Screen.setBlocked(false);
     _timer?.cancel();
-    _sleepTicker?.cancel();
     Screen.keepOn(false);
     _bounce.dispose();
     _pulse.dispose();
@@ -256,7 +242,6 @@ class _TimerScreenState extends State<TimerScreen>
       Navigator.of(context).pop();
       return;
     }
-    _sleepTicker?.cancel();
     _bounce.value = 0;
     _pulse.value = 0;
     setState(() {
@@ -311,7 +296,7 @@ class _TimerScreenState extends State<TimerScreen>
       balanceAtStart: _balanceAtStart,
       debited: _debited,
     ));
-    Alarm.schedule(_end!, _child.name, thenSleep: _emptiesBank);
+    Alarm.schedule(_end!, _child.name);
     // Time left shown in the status bar, outside the app too.
     Screen.showCountdown(_child.name, _end!);
     // Other devices show that this child's timer is in use.
@@ -326,7 +311,7 @@ class _TimerScreenState extends State<TimerScreen>
     _cancelAlarm();
     Screen.keepOn(false);
     setState(() => _phase = _Phase.paused);
-    // Paused: the child stays here until they resume, or stop (sleep).
+    // Paused: the child stays here until they resume, or stop.
     _hold();
   }
 
@@ -370,25 +355,10 @@ class _TimerScreenState extends State<TimerScreen>
     widget.store.stopSession();
     widget.store.clearRunning(_child.id);
     Screen.hideCountdown();
-    // Minutes added on another device during the countdown: no sleep after all.
-    // (Checked a moment later, once the store reflects this device's debit.)
-    if (_emptiesBank) {
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted && _bank > 0) Alarm.cancelSleep();
-      });
-    }
     Screen.keepOn(false);
     HapticFeedback.heavyImpact();
     Future.delayed(const Duration(milliseconds: 350), HapticFeedback.heavyImpact);
     Future.delayed(const Duration(milliseconds: 700), HapticFeedback.heavyImpact);
-
-    // Bank empty: the sleep alarm will lock the device; show the countdown to it.
-    if (_emptiesBank && _sleepAllowed) {
-      _sleepTicker = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (!mounted || DateTime.now().isAfter(_sleepAt!)) t.cancel();
-        if (mounted) setState(() {});
-      });
-    }
   }
 
   /// Keeps the child on this screen: no back, and leaving the app shows the
@@ -412,13 +382,12 @@ class _TimerScreenState extends State<TimerScreen>
     Screen.setBlocked(false);
   }
 
-  /// "Stop" (paused or end screen): the countdown is over, the tablet goes to
-  /// sleep (if allowed) and the app goes back to the home screen.
-  Future<void> _stop() async {
+  /// "Stop" (paused or end screen): the countdown is over. The app goes back
+  /// to the home screen, or in child mode to the choose screen, where the
+  /// child is held again: with an empty bank, they stay there.
+  void _stop() {
     _release();
-    Alarm.cancelSleep(); // sleeping now: no need for the delayed one
-    await Screen.sleepNow();
-    if (mounted) _leave();
+    _leave();
   }
 
   /// Paused or end screen: a parent may leave without the child's choice.
@@ -449,11 +418,6 @@ class _TimerScreenState extends State<TimerScreen>
         _Phase.paused => 'Paused',
         _Phase.finished => "Time's up!",
       };
-
-  String get _sleepMessage {
-    final left = (_sleepAt!.difference(DateTime.now()).inMilliseconds / 1000).ceil();
-    return left > 0 ? 'Sleep time in $left s 😴' : 'Sleep time 😴';
-  }
 
   String get _bankLine => _bank > 0 ? 'In the bank: ${formatBalance(_bank)}' : 'The bank is empty';
 
@@ -743,11 +707,11 @@ class _TimerScreenState extends State<TimerScreen>
           ),
           const SizedBox(height: 16),
         ],
-        if (options.isEmpty && _sleepAllowed && _sleepAt != null) ...[
-          Text(
-            _sleepMessage,
+        if (options.isEmpty) ...[
+          const Text(
+            'The bank is empty. Ask a parent for more time!',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kInk),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kInk),
           ),
           const SizedBox(height: 16),
         ],
@@ -756,7 +720,7 @@ class _TimerScreenState extends State<TimerScreen>
     );
   }
 
-  /// Paused: resume the countdown, or stop (the tablet goes to sleep).
+  /// Paused: resume the countdown, or stop.
   Widget _pausedControls(Color c) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -785,8 +749,8 @@ class _TimerScreenState extends State<TimerScreen>
             shape: const StadiumBorder(),
             textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
-          icon: Icon(_sleepAllowed ? Icons.bedtime_rounded : Icons.stop_rounded),
-          label: Text(_sleepAllowed ? 'Stop and sleep' : 'Stop'),
+          icon: const Icon(Icons.stop_rounded),
+          label: const Text('Stop'),
         ),
         const SizedBox(height: 4),
         TextButton.icon(

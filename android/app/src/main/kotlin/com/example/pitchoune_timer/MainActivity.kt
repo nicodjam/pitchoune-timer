@@ -1,7 +1,6 @@
 package com.example.pitchoune_timer
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -26,16 +25,11 @@ class MainActivity : FlutterActivity() {
                     "schedule" -> {
                         val endMs = call.argument<Number>("endMs")!!.toLong()
                         val name = call.argument<String>("name") ?: ""
-                        val sleepAfterMs = call.argument<Number>("sleepAfterMs")?.toLong()
-                        Alarm.schedule(this, endMs, name, sleepAfterMs)
+                        Alarm.schedule(this, endMs, name)
                         result.success(null)
                     }
                     "cancel" -> {
                         Alarm.cancel(this)
-                        result.success(null)
-                    }
-                    "cancelSleep" -> {
-                        Alarm.cancelSleep(this)
                         result.success(null)
                     }
                     "hasPermission" -> result.success(Settings.canDrawOverlays(this))
@@ -73,7 +67,6 @@ class MainActivity : FlutterActivity() {
                         Log.d(Alarm.TAG, "App sent to the background")
                         result.success(null)
                     }
-                    "canSleep" -> result.success(Sleep.isAllowed(this))
                     // Countdown in the status bar (CountdownNotification.kt)
                     "showCountdown" -> {
                         CountdownNotification.show(
@@ -88,6 +81,16 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "canNotify" -> result.success(CountdownNotification.canPost(this))
+                    // Settings screen: "1.0.0+4" (version name + build number).
+                    "appVersion" -> {
+                        val info = packageManager.getPackageInfo(packageName, 0)
+                        val build = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            info.longVersionCode
+                        } else {
+                            @Suppress("DEPRECATION") info.versionCode.toLong()
+                        }
+                        result.success("${info.versionName}+$build")
+                    }
                     // Child mode: keep the service that opens the app at every unlock.
                     "setChildMode" -> {
                         val on = call.argument<Boolean>("on") == true
@@ -128,12 +131,6 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(null)
                     }
-                    // The child chose "Stop": sleep now. Returns false without the right.
-                    "sleepNow" -> {
-                        val allowed = Sleep.isAllowed(this)
-                        Sleep.now(this)
-                        result.success(allowed)
-                    }
                     // Keep the child on the app until they make a choice (Guard.kt).
                     "setBlocked" -> {
                         val on = call.argument<Boolean>("on") ?: false
@@ -155,17 +152,11 @@ class MainActivity : FlutterActivity() {
                     "isBatteryUnrestricted" -> result.success(
                         getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
                     )
-                    "requestBatteryUnrestricted" -> {
-                        @SuppressLint("BatteryLife") // not on the Play Store; needed for child mode
-                        val intent = Intent(
-                            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                            Uri.parse("package:$packageName")
+                    // Setup screen: the app's page, where Battery → Unrestricted is.
+                    "openAppSettings" -> {
+                        startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
                         )
-                        startActivity(intent)
-                        result.success(null)
-                    }
-                    "requestSleepPermission" -> {
-                        startActivity(Sleep.permissionIntent(this))
                         result.success(null)
                     }
                     else -> result.notImplemented()

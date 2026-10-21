@@ -36,10 +36,9 @@ Tap **Allow** on each line, accept in the screen that opens, then come back:
 the line gets a green ✓.
 - **Display over other apps:** the end of a countdown shows up over other
   apps, and the child cannot leave a paused or ended countdown;
-- **Put the tablet to sleep** ("device administrator", screen lock only): when
-  the child chooses *Stop* or when the bank is empty;
 - **Notifications:** the time left in the status bar;
-- **No battery restriction:** alarms keep working in the background.
+- **No battery restriction:** alarms keep working in the background. The
+  button opens the app's page: tap **Battery → Unrestricted**.
 
 The same screen is in ⚙ (parent code) → **Permissions and setup**.
 

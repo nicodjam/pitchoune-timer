@@ -45,3 +45,7 @@ app.*.map.json
 /macos/
 /windows/
 /web/
+
+# Device chosen by tool/connect.sh, and logs saved by tool/logs.sh --all
+/.device
+/logcat-*.txt

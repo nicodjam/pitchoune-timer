@@ -30,14 +30,6 @@ List<_Item> _items({required bool childMode}) => [
         ask: Alarm.requestPermission,
       ),
       _Item(
-        emoji: '😴',
-        title: 'Put the tablet to sleep',
-        text: 'When the child chooses Stop or the bank is empty. Android calls it '
-            '"device administrator"; it is limited to locking the screen.',
-        check: Screen.canSleep,
-        ask: Screen.requestSleepPermission,
-      ),
-      _Item(
         emoji: '⏱️',
         title: 'Notifications',
         text: 'The time left in the status bar during a countdown.',
@@ -47,9 +39,10 @@ List<_Item> _items({required bool childMode}) => [
       _Item(
         emoji: '🔋',
         title: 'No battery restriction',
-        text: 'So that Android does not stop the alarms and the child mode in the background.',
+        text: 'So that Android does not stop the alarms and the child mode in the '
+            'background. In the next screen: Battery → Unrestricted.',
         check: Screen.batteryUnrestricted,
-        ask: Screen.requestBatteryUnrestricted,
+        ask: Screen.openAppSettings,
       ),
       if (childMode)
         _Item(

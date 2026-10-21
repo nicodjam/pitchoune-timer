@@ -12,8 +12,6 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <!-- Setup screen: ask to be exempt from battery optimisations -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Countdown in the status bar (CountdownNotification.kt) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -59,7 +57,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Receives the end-of-countdown and sleep alarms (Alarm.kt) -->
+        <!-- Receives the end-of-countdown alarm (Alarm.kt) -->
         <receiver
             android:name=".AlarmReceiver"
             android:exported="false" />
@@ -96,20 +94,6 @@
         <receiver
             android:name=".CountdownRefreshReceiver"
             android:exported="false" />
-
-        <!-- Device administrator, limited to "lock the screen" (Sleep.kt) -->
-        <receiver
-            android:name=".SleepAdminReceiver"
-            android:exported="true"
-            android:label="Pitchoune Timer"
-            android:permission="android.permission.BIND_DEVICE_ADMIN">
-            <meta-data
-                android:name="android.app.device_admin"
-                android:resource="@xml/device_admin" />
-            <intent-filter>
-                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
-            </intent-filter>
-        </receiver>
 
         <!-- Used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

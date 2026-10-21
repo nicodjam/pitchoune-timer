@@ -50,3 +50,10 @@ String formatCountdown(Duration d) {
   String p(int v) => v.toString().padLeft(2, '0');
   return h > 0 ? '$h:${p(m)}:${p(s)}' : '${p(m)}:${p(s)}';
 }
+
+
+/// "1.0.0+4" (pubspec.yaml) → "1.0.0 (build 4)".
+String formatVersion(String version) {
+  final parts = version.split('+');
+  return parts.length == 2 ? '${parts[0]} (build ${parts[1]})' : version;
+}

@@ -5,7 +5,9 @@ adult deposits or removes minutes, and the child **withdraws** the amount of
 their choice, at most what is left, which is then spent as an animated
 countdown. When a countdown ends, the app comes to the foreground and offers to
 withdraw a little more, then hands the screen back to the app the child was
-using. When the bank is empty, the tablet goes to sleep shortly after.
+using. When the bank is empty, the child stays on Pitchoune Timer: the end
+screen holds them until they stop, and in child mode the app keeps them on
+their timer.
 
 The time banks are shared by all the family's devices through Cloud Firestore.
 
@@ -14,7 +16,7 @@ The time banks are shared by all the family's devices through Cloud Firestore.
 | Language / framework | Dart 3, Flutter 3.47 (stable channel) |
 | Main target | Android (tablet or phone, portrait) |
 | Application id | `fr.pitchoune.timer`, distributed with Firebase App Distribution |
-| Other target | iOS: builds, without the native Android parts (alarm, screen and sleep control) |
+| Other target | iOS: builds, without the native Android parts (alarm, screen control, child mode) |
 | External dependencies | `firebase_core`, `firebase_auth`, `cloud_firestore` (shared data), `shared_preferences` (local key/value storage) |
 | Last update | October 2026 |
 
@@ -65,13 +67,19 @@ pitchoune_timer/
 │   ├── alarm.dart            Dart facade for the native alarm (Android)
 │   ├── apps.dart             Child mode: the account's apps ("My apps" sheet)
 │   └── screen.dart           Dart facade for the window and screen: keep awake, back to previous
-│                             app, sleep, guard window, status bar countdown (Android)
+│                             app, guard window, status bar countdown, child mode (Android)
 ├── test/
 │   └── widget_test.dart      Unit tests (formatting, store, session, family code) + a widget test
 ├── assets/icon/              Launcher icon sources (SVG) and 1024 px renders
-├── tool/
-│   ├── generate_icons.py     Regenerates every launcher icon from the SVG drawing
-│   └── release.sh            Builds, signs and sends a version to the testers
+├── tool/                     Helper scripts (README, "Helper scripts")
+│   ├── lib.sh                Shared shell helpers (messages, confirm, device choice)
+│   ├── env.sh                Finds the tools, sets the PATH, checks what is missing
+│   ├── connect.sh            Wireless adb connection, remembers the device
+│   ├── build.sh              Builds the release APK, checks it is signed with the release key
+│   ├── install.sh            Installs the last build on the tablet, as an update
+│   ├── logs.sh               The app's logs only
+│   ├── release.sh            Builds, signs, sends a version to the testers, tags it
+│   └── generate_icons.py     Regenerates every launcher icon from the SVG drawing
 ├── android/
 │   ├── key.properties        Release key settings (not in git, see README)
 │   └── app/
@@ -81,12 +89,10 @@ pitchoune_timer/
 │           ├── AndroidManifest.xml          Permissions, activities, services, receivers
 │           ├── res/mipmap-*/                Launcher icons (legacy + adaptive foreground)
 │           ├── res/mipmap-anydpi-v26/       Adaptive icon definition (Android 8+)
-│           ├── res/xml/device_admin.xml     Device administrator policy: lock the screen only
 │           ├── res/drawable/ic_stat_timer.xml   Stopwatch icon for the status bar
 │           └── kotlin/com/example/pitchoune_timer/
 │               ├── MainActivity.kt          Method channels, Guard hand-over, lock screen
-│               ├── Alarm.kt                 End and sleep alarms (AlarmManager + BroadcastReceiver)
-│               ├── Sleep.kt                 Puts the device to sleep (device administrator)
+│               ├── Alarm.kt                 End-of-countdown alarm (AlarmManager + BroadcastReceiver)
 │               ├── Guard.kt                 Window over the other apps while the child is held
 │               ├── CountdownNotification.kt Time left in the status bar
 │               ├── CountdownTicker.kt       Last minute: redraws it every second
@@ -132,7 +138,7 @@ TimerScreen ──▶ Alarm (alarm.dart)        ══pitchoune/alarm══▶  
             │                                                    Alarm.kt ──▶ AlarmManager
             ├─▶ Screen (screen.dart)      ══pitchoune/screen══▶ MainActivity.kt
             │                                                    FLAG_KEEP_SCREEN_ON, moveTaskToBack,
-            │                                                    Sleep.kt, Guard.kt,
+            │                                                    Guard.kt,
             │                                                    CountdownNotification.kt (+ Ticker),
             │                                                    ChildModeService.kt, HomeActivity.kt
             └─▶ Apps (apps.dart)          ══pitchoune/screen══▶ Apps.kt (child mode app list)
@@ -366,14 +372,14 @@ because another device can change the child's bank while it is open; in the
 
 ```
             Start (withdraw N)            Pause
-   ┌────────┐ ───────────▶ ┌─────────┐ ─────────▶ ┌────────┐ ── Stop ──▶ sleep +
-   │ choose │              │ running │            │ paused │             home screen
+   ┌────────┐ ───────────▶ ┌─────────┐ ─────────▶ ┌────────┐ ── Stop ──▶ home screen
+   │ choose │              │ running │            │ paused │             (child mode: choose)
    └────────┘              └─────────┘ ◀───────── └────────┘
        │                     ▲    │       Resume       🔒 held
      Back                    │    │ remaining = 0
        ▼          +1/+5/+10  │    ▼
   home screen     or All     │  ┌──────────┐
-                             └──│ finished │ ── Stop ──▶ sleep + home screen
+                             └──│ finished │ ── Stop ──▶ home screen (child mode: choose)
                                 └──────────┘
                                    🔒 held        (Parent + code: leave from 🔒)
 ```
@@ -387,18 +393,22 @@ because another device can change the child's bank while it is open; in the
   does nothing: leaving a countdown always goes through *Pause* then *Stop*.
   The child may of course switch to another app (that is the point): the
   countdown goes on, shown in the status bar.
-- **paused** 🔒: *Resume*, or *Stop and sleep*. The child is **held** on this
+- **paused** 🔒: *Resume*, or *Stop*. The child is **held** on this
   screen (see below) until one of them, or until a parent leaves with the code.
 - **finished** 🔒: the app has been brought to the foreground by the alarm, and
   **the child must choose**:
   - *+1 min*, *+5 min*, *+10 min* (only those the bank can afford) or *All (…)*:
     starts a new countdown. If the alarm brought the app forward, the app is
     then **sent back**, revealing the app the child was using;
-  - *Stop and sleep*: the tablet goes to sleep at once, and the app returns to
-    its home screen (just *Stop* without the device administrator right);
+  - *Stop*: the countdown is over; the app returns to its home screen, or in
+    child mode to the *choose* screen, where the child is held again;
   - a discreet *Parent* button lets a parent leave with the code.
 
-  With an empty bank, a message also counts down to the automatic sleep.
+  With an empty bank, no more time is offered: "The bank is empty. Ask a parent
+  for more time!". In child mode the child then stays on their choose screen,
+  held, until a parent adds minutes. (Version 1.0 also put the tablet to sleep
+  through a device administrator right; it was removed: holding the child in
+  the app is what matters, and Google Play frowns on device administrators.)
 
 **Held** (🔒, `_hold()` / `_release()`): no back arrow, the system back button
 does nothing, and leaving the app (Home, Recents) shows a full-screen window
@@ -429,7 +439,7 @@ manually changing the phone's time would distort the countdown.
 | Pause | `_save()` + cancel the alarm, the session, the running mark and the status bar countdown; the child is held |
 | App goes to the background (`didChangeAppLifecycleState`) | `_save()` |
 | Leaving the screen (`PopScope`) | `_save()` + cancel the alarm, the session and the running mark |
-| End (`_finish`) | Debits what is left of `total`, session and running mark deleted, **alarm kept**. If minutes were added on another device meanwhile, the sleep alarm is cancelled |
+| End (`_finish`) | Debits what is left of `total`, session and running mark deleted, **alarm kept** (it is what brings the app back if the countdown ended in the background) |
 
 #### Keeping the screen awake
 
@@ -541,6 +551,11 @@ parent mode, from the *choose* phase of the timer in child mode.
   mode opens it at once, since child mode needs one more thing (home screen).
 - **Which child?** In child mode, one radio button per child (`RadioGroup`),
   with their avatar and bank.
+- At the bottom, the installed version, "1.0.0 (build 4)": read natively
+  (`Screen.appVersion`, `PackageManager.getPackageInfo`) rather than with a
+  plugin, and formatted by `formatVersion` (`lib/theme.dart`). The number is
+  the one `tool/release.sh` puts in `pubspec.yaml`, so a tester's tablet can be
+  matched with a release tag.
 
 Every change is saved at once and applied at once: the root screen behind the
 settings is already the new one when the parent comes back.
@@ -553,9 +568,8 @@ when the app is set up** rather than at different moments of its use:
 | Line | Checked with | Opened with |
 |---|---|---|
 | Display over other apps | `Alarm.hasPermission` | system settings of the permission |
-| Put the tablet to sleep (device administrator) | `Screen.canSleep` | device admin activation screen |
 | Notifications | `Screen.canNotify` | system prompt (twice at most), then the app's notification settings |
-| No battery restriction | `Screen.batteryUnrestricted` | `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` dialog |
+| No battery restriction | `Screen.batteryUnrestricted` (`isIgnoringBatteryOptimizations`) | the app's system page (`ACTION_APPLICATION_DETAILS_SETTINGS`), where the parent taps Battery → Unrestricted |
 | Home screen of this account (child mode only) | `Screen.isHome` | `ACTION_HOME_SETTINGS` |
 
 - Each line is a small record of two functions (`check`, `ask`), so the list
@@ -641,8 +655,8 @@ each wrapped in a Dart facade that does nothing outside Android.
 
 | Channel | Dart facade | Kotlin | Methods |
 |---|---|---|---|
-| `pitchoune/alarm` | `Alarm` (`lib/alarm.dart`) | `MainActivity.kt` → `Alarm.kt` | `schedule`, `cancel`, `cancelSleep`, `hasPermission`, `requestPermission` |
-| `pitchoune/screen` | `Screen` (`lib/screen.dart`) | `MainActivity.kt` → `Guard.kt`, `Sleep.kt`, `CountdownNotification.kt` | `keepScreenOn`, `moveToBack`, `setBlocked`, `canSleep`, `requestSleepPermission`, `sleepNow`, `showCountdown`, `hideCountdown`, `canNotify`, `requestNotify` |
+| `pitchoune/alarm` | `Alarm` (`lib/alarm.dart`) | `MainActivity.kt` → `Alarm.kt` | `schedule`, `cancel`, `hasPermission`, `requestPermission` |
+| `pitchoune/screen` | `Screen` (`lib/screen.dart`) | `MainActivity.kt` → `Guard.kt`, `CountdownNotification.kt`, `ChildModeService.kt`, `Apps.kt` | `keepScreenOn`, `moveToBack`, `setBlocked`, `suspendGuard`, `showCountdown`, `hideCountdown`, `canNotify`, `requestNotify`, `appVersion`, `isBatteryUnrestricted`, `openAppSettings`, `setChildMode`, `isHome`, `openHomeSettings`, `listApps`, `launchApp` |
 
 ### 7.1 The end-of-countdown alarm
 
@@ -674,9 +688,8 @@ is in another app or the screen is locked**. Dart code alone cannot do it:
    └─ process killed : main() ▶ session found ▶ TimerScreen(resume) ▶ confetti
 ```
 
-`Alarm.kt` holds two alarms: the **end** alarm (request code 4242) and the
-**sleep** alarm (4243), scheduled 15 s after the end only for a countdown that
-empties the bank. `AlarmReceiver` handles both.
+`Alarm.kt` holds a single alarm, the **end** alarm (request code 4242),
+handled by `AlarmReceiver`.
 
 **Why an intermediate `BroadcastReceiver`** rather than a `PendingIntent` that
 opens the activity directly? Since Android 14 and 15, the rules around starting
@@ -690,7 +703,6 @@ granted by the "Display over other apps" permission.
 |---|---|---|
 | Screen kept awake while a countdown is visible | `MainActivity` | Window flag `FLAG_KEEP_SCREEN_ON` (honoured only while the window is visible) |
 | Back to the previous app after *+N min* | `MainActivity` | `moveTaskToBack(true)` |
-| Sleep (*Stop*, empty bank) | `Sleep.kt` | `DevicePolicyManager.lockNow()`, as a device administrator limited to `force-lock` (`res/xml/device_admin.xml`) |
 | Child held (paused, end, and in child mode the choose screen) | `Guard.kt` | While `Guard.active`, `MainActivity.onStop` adds a full-screen `TYPE_APPLICATION_OVERLAY` window over every other app; `onStart` removes it. If the hold starts while another app is in front, the window is shown at once. Its title and message are given by the Dart code for each situation |
 | Child mode: app opened at every unlock | `ChildModeService.kt` | A *foreground service* (type `specialUse`, low-importance permanent notification) registers in code a receiver for `ACTION_SCREEN_ON` and `ACTION_USER_PRESENT`. When the screen turns on, and again once unlocked, unless a countdown is running (`CountdownNotification.isRunning`), it starts `MainActivity` with `NEW_TASK \| REORDER_TO_FRONT`, normally allowed thanks to "Display over other apps". 1.5 s after the unlock, if the app is still not on screen (`MainActivity.visible`), Android has refused: the guard window is shown instead (`Guard.invite`), whose button opens the app (a tap on our own window is always allowed to). `START_STICKY`: Android restarts it if it kills it. Started by the Dart side (`setChildMode`), by `MainActivity.onCreate` and by `BootReceiver` |
 | Child mode after a restart | `BootReceiver.kt` | On `BOOT_COMPLETED` (sent after the first unlock, sometimes many seconds later) and `MY_PACKAGE_REPLACED` (app updated), reads the mode written by the Dart side (`FlutterSharedPreferences`, key `flutter.pitchoune.mode`) and starts `ChildModeService` asking it to open the app at once (the unlock is already past). The opening is done by the service, not the receiver: a receiver's process may be frozen as soon as `onReceive` returns, which would cancel the 1.5 s check and its invitation window. If the service is refused, the receiver opens the app itself and stays alive 3 s with `goAsync()` |
@@ -742,9 +754,8 @@ Since Android 13, posting notifications needs a runtime permission
 | Permission | Kind | Used for | Asked |
 |---|---|---|---|
 | `SYSTEM_ALERT_WINDOW` "Display over other apps" | Special (settings screen) | Coming to the front at the end; guard window | Setup screen |
-| Device administrator, `force-lock` only | Special (activation screen) | Sleep | Setup screen |
 | `POST_NOTIFICATIONS` | Runtime (system prompt) | Countdown in the status bar | Setup screen |
-| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Normal, then a system dialog | Alarms and child mode not stopped in the background | Setup screen |
+| Battery "Unrestricted" (not a manifest permission) | A choice on the app's system page | Alarms and child mode not stopped in the background | Setup screen |
 | `USE_EXACT_ALARM` (13+), `SCHEDULE_EXACT_ALARM` (≤ 12) | Normal / granted at install | Alarm on time, even in Doze | Never |
 | `RECEIVE_BOOT_COMPLETED` | Normal | Child mode: reopen the app after a restart | Never |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Normal | Child mode: the service that listens to unlocks | Never |
@@ -753,9 +764,11 @@ Since Android 13, posting notifications needs a runtime permission
 The setup screen (§4.6) groups every request, at the first launch (and at the
 next ones while something is missing).
 
-**`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`** lets the app ask directly for the
-battery exemption. Google Play only accepts it for some kinds of apps; outside
-the Play Store, it is fine.
+**Battery.** `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` would let the app ask
+directly for the exemption, in a system dialog. Google Play only accepts it
+for some kinds of apps, so the setup screen opens the app's system page
+instead, where the parent chooses Battery → Unrestricted; the app only checks
+the result (`isIgnoringBatteryOptimizations`).
 
 **`USE_EXACT_ALARM`** is granted automatically, but Google Play reserves it for
 alarm-clock or timer apps. For a Play Store release, it would have to be
@@ -790,7 +803,6 @@ adb shell dumpsys package fr.pitchoune.timer | grep -i alarm
 | `Guard: "Display over other apps" not granted` | Leaving the end screen is not prevented: grant the permission |
 | `Countdown notification: permission not granted` | Notifications not allowed: no countdown in the status bar |
 | A notification but no chip next to the clock | Android older than 16, Live Updates turned off for the app, or a manufacturer restriction |
-| `Cannot sleep: device administrator not activated` | The parent declined the device administrator request. It is offered again at the next app launch |
 | "Pitchoune Timer could not start" on screen | A startup step failed or timed out; the message is the exception. `adb logcat -d \| grep -E "flutter\|Startup"` gives the details (Dart messages use the `flutter` tag) |
 | `Cannot show the app` | "Display over other apps" not granted. Some vendor skins (Xiaomi, Oppo…) also have their own setting, such as "Display pop-up windows while running in the background" |
 
@@ -1072,7 +1084,7 @@ system, as opposed to a software timer that only runs while the CPU does.
 | Normal | Automatically at install | `USE_EXACT_ALARM`, `POST_PROMOTED_NOTIFICATIONS` |
 | Runtime ("dangerous") | System prompt while the app runs | `POST_NOTIFICATIONS` |
 | Special | A dedicated settings screen | "Display over other apps" |
-| Device administrator | An activation screen, listing the policies | Lock the screen |
+| Device administrator | An activation screen, listing the policies | Not used (version 1.0 locked the screen with it) |
 | Device owner | Only on a freshly reset device, with `adb` or an enterprise tool | Not used: true kiosk mode |
 
 The rule of thumb: the more an app can affect the rest of the device, the more
@@ -1122,7 +1134,7 @@ of its data (above) and their own **process**: Android gives the app a
 different Linux user id for each Android user (`uid = user number × 100000 +
 app id`). So there are as many independent Pitchoune Timers as users who
 opened it: each with its own mode, family code, countdown, alarms, permissions
-("Display over other apps", device administrator, notifications are granted
+("Display over other apps", notifications and battery exemption are granted
 per user) and child mode service. Only the user on screen sees their windows;
 the other users' processes may keep running in the background (their alarms
 and Firestore listeners keep working) until Android stops them to save memory.

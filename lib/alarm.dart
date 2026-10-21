@@ -6,32 +6,18 @@ import 'package:flutter/services.dart';
 /// When a countdown starts, a system alarm is scheduled for the end time.
 /// At that time, Android brings Pitchoune Timer back to the foreground, over
 /// the current app (even over the lock screen), and plays a sound.
-/// When the countdown empties the bank, a second alarm puts the device to
-/// sleep shortly after.
 /// On any platform other than Android, these methods do nothing.
 class Alarm {
   static const _channel = MethodChannel('pitchoune/alarm');
 
   static bool get available => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-  /// Delay between the end of a countdown that empties the bank and the
-  /// device going to sleep.
-  static const sleepDelay = Duration(seconds: 15);
+  /// Schedules the end-of-countdown alarm.
+  static Future<void> schedule(DateTime end, String name) =>
+      _call('schedule', {'endMs': end.millisecondsSinceEpoch, 'name': name});
 
-  /// Schedules the end-of-countdown alarm. With [thenSleep], a second alarm
-  /// puts the device to sleep [sleepDelay] later (bank empty).
-  static Future<void> schedule(DateTime end, String name, {bool thenSleep = false}) =>
-      _call('schedule', {
-        'endMs': end.millisecondsSinceEpoch,
-        'name': name,
-        'sleepAfterMs': thenSleep ? sleepDelay.inMilliseconds : null,
-      });
-
-  /// Cancels both the end-of-countdown alarm and the sleep alarm.
+  /// Cancels the end-of-countdown alarm.
   static Future<void> cancel() => _call('cancel');
-
-  /// Cancels only the sleep alarm (the bank was refilled in the meantime).
-  static Future<void> cancelSleep() => _call('cancelSleep');
 
   /// Opens the system "Display over other apps" screen.
   static Future<void> requestPermission() => _call('requestPermission');

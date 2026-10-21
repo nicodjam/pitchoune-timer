@@ -85,18 +85,49 @@ Testers install the app from Firebase App Distribution; their guide is
 
 ### Every release
 
+From `main`:
+
 ```bash
 tool/release.sh "What changed, in a sentence for the testers"
 tool/release.sh "What changed" 1.1.0     # also sets a new version name
-git push && git push --tags
 ```
 
-The script checks that the tree is committed and the release key exists, adds
-one to the build number (`version: name+build` in `pubspec.yaml`), runs the
-tests, builds the signed APK, uploads it to App Distribution for the `family`
-group (`PITCHOUNE_TESTERS=<alias>` for another group), then commits and tags
-the new version.
+The script:
+1. checks the release key, the tools, that everything is committed, and asks
+   for confirmation if the branch is not `main`;
+2. adds one to the build number (`version: name+build` in `pubspec.yaml`);
+3. runs the tests, builds the APK and checks it is signed with the release
+   key (`tool/build.sh`);
+4. uploads it to App Distribution for the `family` group
+   (`PITCHOUNE_TESTERS=<alias>` for another group);
+5. commits `pubspec.yaml` and tags `v<name>+<build>`, then **asks** before
+   pushing the branch and the tag to GitHub.
 
+If it stops before the upload, `pubspec.yaml` is put back as it was.
+
+## Helper scripts (`tool/`)
+
+| Script | What it does |
+|---|---|
+| `source tool/env.sh` | Finds Flutter, the Android SDK (adb, apksigner), Java, Node.js, the Firebase and FlutterFire CLIs; adds them to the `PATH` of the terminal; checks each one and says how to install what is missing. `tool/env.sh --print` prints the `export` lines to paste into `~/.bashrc` |
+| `tool/connect.sh <ip:port>` | Connects a tablet in wireless debugging and remembers it for the other scripts (`--pair <ip:port>` the first time). Without argument: choose among the connected devices |
+| `tool/build.sh` | Builds the release APK and **checks its signature**: the certificate of the APK (`apksigner`) must be the release key of `android/key.properties` (`keytool`), not the debug key. `--debug` accepts the debug key for a local test, `--check` only checks the last build |
+| `tool/install.sh` | Installs the last build as an update on the remembered tablet (the app keeps its data). Warns if the code changed since the build, and explains the usual failures (other signing key, downgrade) |
+| `tool/logs.sh` | The app's logs only (Dart, native code, crashes, background starts). `--clear` empties the buffer, `-f` follows live, `--all` saves everything to a file |
+| `tool/release.sh` | A version for the testers (above) |
+| `tool/generate_icons.py` | Regenerates the launcher icons |
+
+Typical session:
+
+```bash
+source tool/env.sh
+tool/connect.sh 10.83.57.41:44667      # port shown in Wireless debugging
+tool/build.sh && tool/install.sh
+tool/logs.sh --clear                   # then reproduce the problem
+tool/logs.sh
+```
+
+## Run
 
 ```bash
 flutter pub get
@@ -113,8 +144,6 @@ On Android, a **Setup** screen lists everything to allow, as soon as the app
 starts (and in ⚙ → *Permissions and setup*):
 - "Display over other apps": the end of a countdown shows up over other apps,
   and the child cannot leave a paused or ended countdown;
-- device administrator (lock the screen only): the tablet goes to sleep when
-  the child stops or the bank is empty;
 - notifications: the minutes left are shown in the status bar during a
   countdown;
 - no battery restriction: alarms and child mode keep working in the

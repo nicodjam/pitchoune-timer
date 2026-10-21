@@ -20,6 +20,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   DeviceSettings get settings => widget.settings;
   ChildrenStore get store => widget.store;
+  final Future<String?> _version = Screen.appVersion();
 
   // In child mode the guard is active behind this screen: keep it off while
   // a parent is here (the setup opens system screens).
@@ -150,6 +151,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: 32),
+              // Installed version, as tool/release.sh numbers it.
+              FutureBuilder<String?>(
+                future: _version,
+                builder: (context, snapshot) => Text(
+                  snapshot.data == null ? '' : 'Pitchoune Timer ${formatVersion(snapshot.data!)}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.black45),
+                ),
+              ),
             ],
           );
         },

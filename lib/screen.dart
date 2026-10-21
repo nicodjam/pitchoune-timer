@@ -16,32 +16,6 @@ class Screen {
   /// before the alarm brought Pitchoune Timer forward.
   static Future<void> sendToBack() => _call('moveToBack');
 
-  /// Is the app allowed to put the device to sleep (device administrator)?
-  static Future<bool> canSleep() async {
-    if (!available) return false;
-    try {
-      return await _channel.invokeMethod<bool>('canSleep') ?? false;
-    } catch (e) {
-      debugPrint('Screen.canSleep: $e');
-      return false;
-    }
-  }
-
-  /// Opens the system screen that makes the app a device administrator,
-  /// limited to the "lock the screen" policy.
-  static Future<void> requestSleepPermission() => _call('requestSleepPermission');
-
-  /// Puts the device to sleep now. Returns false if the app is not allowed to.
-  static Future<bool> sleepNow() async {
-    if (!available) return false;
-    try {
-      return await _channel.invokeMethod<bool>('sleepNow') ?? false;
-    } catch (e) {
-      debugPrint('Screen.sleepNow: $e');
-      return false;
-    }
-  }
-
   /// While blocked, leaving the app shows a full-screen window over the other
   /// apps, with [title] and [message], whose only button brings Pitchoune
   /// Timer back.
@@ -63,6 +37,18 @@ class Screen {
     } catch (e) {
       debugPrint('Screen.canNotify: $e');
       return true;
+    }
+  }
+
+  /// Installed version, "name+build" as in pubspec.yaml (e.g. "1.0.0+4");
+  /// null outside Android.
+  static Future<String?> appVersion() async {
+    if (!available) return null;
+    try {
+      return await _channel.invokeMethod<String>('appVersion');
+    } catch (e) {
+      debugPrint('Screen.appVersion: $e');
+      return null;
     }
   }
 
@@ -92,8 +78,10 @@ class Screen {
     }
   }
 
-  /// Asks Android to exempt the app from battery optimisations.
-  static Future<void> requestBatteryUnrestricted() => _call('requestBatteryUnrestricted');
+  /// Opens the app's system page, where the parent taps Battery →
+  /// Unrestricted. (Asking for the exemption directly needs a permission that
+  /// Google Play restricts.)
+  static Future<void> openAppSettings() => _call('openAppSettings');
 
   static int _guardSuspensions = 0;
 

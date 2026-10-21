@@ -17,6 +17,11 @@ Future<ChildrenStore> newStore({String deviceId = 'this-device'}) async {
 }
 
 void main() {
+  test('formatVersion shows the build number', () {
+    expect(formatVersion('1.0.0+4'), '1.0.0 (build 4)');
+    expect(formatVersion('1.2.0'), '1.2.0');
+  });
+
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('Formatting', () {
