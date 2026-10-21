@@ -2,7 +2,7 @@ name: pitchoune_timer
 description: "A timer for children: each child spends their own time balance as an animated countdown."
 publish_to: 'none'
 
-version: 1.0.0+3
+version: 1.0.0+4
 
 environment:
   sdk: ^3.7.0
