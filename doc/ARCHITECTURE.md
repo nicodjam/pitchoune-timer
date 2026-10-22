@@ -70,6 +70,7 @@ pitchoune_timer/
 │   ├── apps.dart             Child mode: the account's apps ("My apps" sheet)
 │   └── screen.dart           Dart facade for the window and screen: keep awake, back to previous
 │                             app, guard window, status bar countdown, child mode (Android)
+├── test_screenshots/        Renders the README screenshots with a demo family (not run by `flutter test`)
 ├── test/
 │   └── widget_test.dart      Unit tests (formatting, store, session, family code) + a widget test
 ├── assets/icon/              Launcher icon sources (SVG) and 1024 px renders
@@ -81,7 +82,7 @@ pitchoune_timer/
 │   ├── install.sh            Installs the last build on the tablet, as an update
 │   ├── logs.sh               The app's logs only
 │   ├── release.sh            Builds, signs, sends a version to the testers, tags it
-│   ├── screenshots.sh        Takes the user guide's screenshots on the tablet
+│   ├── screenshots.sh        User guide screenshots: rendered (--render) or taken on the tablet
 │   └── generate_icons.py     Regenerates every launcher icon from the SVG drawing
 ├── android/
 │   ├── key.properties        Release key settings (not in git, §10.4)
@@ -1317,7 +1318,8 @@ flutter analyze      # static analysis
 | `tool/build.sh` | Builds the release APK, **checks its signature**, and copies it as `build/pitchoune-timer-<version>-<N>.apk` (the file sent to the testers): the certificate of the APK (`apksigner`) must be the release key of `android/key.properties` (`keytool`), not the debug key. `--debug` accepts the debug key for a local test, `--check` only checks the last build |
 | `tool/install.sh` | Installs the last build as an update on the remembered tablet (the app keeps its data). Warns if the code changed since the build, and explains the usual failures (other signing key, downgrade) |
 | `tool/logs.sh` | The app's logs only (Dart, native code, crashes, background starts). `--clear` empties the buffer, `-f` follows live, `--all` saves everything to a file |
-| `tool/release.sh` | A version for the testers (above) |
+| `tool/release.sh` | A version for the testers (§10.4) |
+| `tool/screenshots.sh` | Screenshots of the user guide. `--render` draws them without any device (`flutter test --update-goldens test_screenshots/`: each screen built with a demo family, drawn by the test engine with real fonts, saved as a *golden file*); without option, takes them on the tablet one by one |
 | `tool/generate_icons.py` | Regenerates the launcher icons |
 
 Typical session:

@@ -141,8 +141,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
                                 style: FilledButton.styleFrom(
                                   backgroundColor: kPurple,
                                   padding: const EdgeInsets.symmetric(vertical: 16),
-                                  textStyle:
-                                      const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                                  textStyle: Theme.of(context)
+                                      .textTheme
+                                      .labelLarge
+                                      ?.copyWith(fontSize: 18, fontWeight: FontWeight.w800),
                                 ),
                                 icon: const Icon(Icons.qr_code_scanner_rounded),
                                 label: const Text('Scan the QR code'),

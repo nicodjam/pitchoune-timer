@@ -680,7 +680,7 @@ class _TimerScreenState extends State<TimerScreen>
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: const StadiumBorder(),
-          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w800),
         );
 
     return Column(
@@ -747,7 +747,7 @@ class _TimerScreenState extends State<TimerScreen>
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             shape: const StadiumBorder(),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           icon: const Icon(Icons.stop_rounded),
           label: const Text('Stop'),

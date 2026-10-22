@@ -59,7 +59,6 @@ A **family** links the devices that share the same children and banks.
 <p>
   <img src="doc/screenshots/family.png" width="240" alt="First screen">
   <img src="doc/screenshots/family-qr.png" width="240" alt="Family QR code">
-  <img src="doc/screenshots/scan.png" width="240" alt="Scanning the QR code">
 </p>
 
 - **First device** (a parent's phone or tablet): **Create a family**.
@@ -127,7 +126,6 @@ The parent code is **728** in this version.
 <p>
   <img src="doc/screenshots/choose.png" width="240" alt="Choosing the amount">
   <img src="doc/screenshots/running.png" width="240" alt="Countdown">
-  <img src="doc/screenshots/status-bar.png" width="240" alt="Status bar">
 </p>
 
 1. Tap your card (in child mode, your screen is already open).
@@ -172,10 +170,7 @@ discreet *Parent* button and the code.
 On a tablet with a **user account for the child** (Android *users* or
 *restricted profile*), Pitchoune Timer can become the child's home base.
 
-<p>
-  <img src="doc/screenshots/settings.png" width="240" alt="Settings in child mode">
-  <img src="doc/screenshots/my-apps.png" width="240" alt="My apps">
-</p>
+<img src="doc/screenshots/settings.png" width="240" align="right" alt="Settings in child mode">
 
 Set it up **in the child's account**: open the app, join the family, then
 ⚙ (parent code) → **Child** → choose the child, and allow everything in the
@@ -198,6 +193,8 @@ Then:
 
 Each Android account keeps its own settings: the parent account stays in
 parent mode, with its usual home screen.
+
+<br clear="right">
 
 ---
 
