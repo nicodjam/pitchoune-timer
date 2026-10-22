@@ -17,6 +17,17 @@ Future<ChildrenStore> newStore({String deviceId = 'this-device'}) async {
 }
 
 void main() {
+  test('family QR code: only our own codes are accepted', () {
+    final id = FamilyService.newCode();
+    expect(FamilyService.codeFromQr(FamilyService.qrPayload(id)), id);
+    expect(FamilyService.codeFromQr('pitchoune-family:abcd-efgh-jkmn'), 'ABCDEFGHJKMN');
+    expect(FamilyService.codeFromQr('https://example.com'), isNull);
+    expect(FamilyService.codeFromQr(id), isNull); // no prefix
+    expect(FamilyService.codeFromQr('pitchoune-family:SHORT'), isNull);
+    expect(FamilyService.codeFromQr('pitchoune-family:ABCDEFGH1JKL'), isNull); // 1 is not in the alphabet
+    expect(FamilyService.codeFromQr(null), isNull);
+  });
+
   test('formatVersion shows the build number', () {
     expect(formatVersion('1.0.0+4'), '1.0.0 (build 4)');
     expect(formatVersion('1.2.0'), '1.2.0');

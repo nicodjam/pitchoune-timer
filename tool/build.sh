@@ -5,6 +5,9 @@
 #   tool/build.sh --debug    # also accepts the debug key (no android/key.properties)
 #   tool/build.sh --check    # only check the signature of the last build
 #
+# A signed release build is also copied as build/pitchoune-timer-<version>-<N>.apk,
+# the file tool/release.sh sends to the testers.
+#
 # The signature decides whether the APK can update the installed app: Android
 # refuses an update signed with another key. The check reads the certificate
 # of the APK (apksigner) and compares it with the release key of
@@ -53,7 +56,7 @@ echo "  SHA-256:     $apk_sha"
 if [[ $subject == *"Android Debug"* ]]; then
   if [[ $allow_debug == 1 ]]; then
     warn "Signed with the DEBUG key: fine for a local test, not for the testers"
-    exit 0
+    exit 0   # no named copy: it must never be sent to the testers
   fi
   die "Signed with the DEBUG key: android/key.properties was not used (is storeFile an absolute path?)"
 fi
@@ -74,4 +77,6 @@ if [[ -f android/key.properties ]]; then
 else
   warn "No android/key.properties: cannot compare with the release key"
 fi
-ok "$APK ($(du -h "$APK" | cut -f1))"
+named=$(named_apk)
+cp "$APK" "$named"
+ok "$named ($(du -h "$named" | cut -f1))"

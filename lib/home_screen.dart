@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import 'child.dart';
 import 'effects.dart';
+import 'family.dart';
+import 'family_qr.dart';
 import 'parent.dart';
 import 'theme.dart';
 import 'timer_screen.dart';
@@ -130,20 +132,24 @@ class HomeScreen extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true, // room for the QR code
       builder: (sheet) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Family code', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+              const Text('Add a device', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
               const SizedBox(height: 6),
               const Text(
-                'Type this code on another device to share the time banks with it. '
-                'Keep it within the family: it is the key to your data.',
+                'On the new device: Join a family → Scan the QR code, and point its camera '
+                'here. Or type the code below. Keep them within the family: they are the key '
+                'to your data.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
+              FamilyQrCode(familyId: FamilyService.normalize(code)),
+              const SizedBox(height: 12),
               SelectableText(
                 code,
                 style: const TextStyle(

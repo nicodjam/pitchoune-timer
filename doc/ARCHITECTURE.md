@@ -17,7 +17,7 @@ The time banks are shared by all the family's devices through Cloud Firestore.
 | Main target | Android (tablet or phone, portrait) |
 | Application id | `fr.pitchoune.timer`, distributed with Firebase App Distribution |
 | Other target | iOS: builds, without the native Android parts (alarm, screen control, child mode) |
-| External dependencies | `firebase_core`, `firebase_auth`, `cloud_firestore` (shared data), `shared_preferences` (local key/value storage) |
+| External dependencies | `firebase_core`, `firebase_auth`, `cloud_firestore` (shared data), `shared_preferences` (local key/value storage), `qr_flutter` + `mobile_scanner` (family QR code) |
 | Last update | October 2026 |
 
 ---
@@ -55,7 +55,8 @@ pitchoune_timer/
 │   ├── child.dart            Model (Child, TimerSession) + ChildrenStore
 │   ├── backend.dart          ChildrenBackend: Firestore and in-memory implementations
 │   ├── family.dart           FamilyService: anonymous sign-in, family code
-│   ├── family_screen.dart    Create or join a family
+│   ├── family_screen.dart    Create or join a family (QR code scan, or typed code)
+│   ├── family_qr.dart        Family QR code: drawn (qr_flutter), scanned (mobile_scanner)
 │   ├── home_screen.dart      List of children, add / edit / delete, family code
 │   ├── parent.dart           Parent code, parent mode (ParentLock), keypad
 │   ├── settings.dart         DeviceSettings: this tablet account's mode (parent / child)
@@ -283,6 +284,11 @@ store's constructor. This is what makes `ChildrenStore` testable on a PC with
 - **Join**: checks that the family exists, then adds this device to `members`.
 - **Leave**: removes this device from `members`. The children stay in the family.
 - The family code is remembered locally (SharedPreferences).
+- **QR code.** The family sheet also shows the code as a QR code, whose text
+  is `pitchoune-family:<code>` (`qrPayload`). `codeFromQr` accepts only that
+  prefix followed by 12 characters of the alphabet, so any other QR code (a
+  web link, a product label) is ignored. The QR code carries exactly the same
+  secret as the typed code: it is a faster way to type it, not a new right.
 
 ### 3.6 Firestore data and security rules — `firestore.rules`
 
@@ -333,7 +339,7 @@ store through `ListenableBuilder`.
 | Sub-component | Role |
 |---|---|
 | `HomeScreen` | Gradient background + bubbles + `CustomScrollView` (title, family button, list or empty state) + floating button |
-| `_showFamily()` | Bottom sheet with the family code (copy button) and *Leave this family* |
+| `_showFamily()` | Bottom sheet "Add a device": the family QR code (`FamilyQrCode`), the code in text (copy button), and *Leave this family* |
 | `ParentBanner` | Shown while parent mode is on: time left and a *Lock* button |
 | `ChildCard` | One card per child. *Tap* = start the timer, *long press* = options menu. Shows "In use until …" when the child's timer runs on another device |
 | `_EmptyState` | Shown when there are no children |
@@ -516,8 +522,13 @@ start a countdown**:
 
 ### 4.3 `FamilyScreen` — `lib/family_screen.dart`
 
-Shown on a device that belongs to no family yet: *Create a family*, or type a
-family code and *Join*. Network actions show a spinner and a readable error
+Shown on a device that belongs to no family yet: *Create a family*, or join
+one: **Scan the QR code** (main button) or type the code. Scanning opens a
+camera screen (`scanFamilyCode` in `lib/family_qr.dart`: `MobileScanner`, QR
+codes only, a frame to aim, a button for the other camera); the first valid
+family code found closes it, fills the field and joins at once. A QR code that
+is not a family code shows a hint instead. The camera permission is asked by
+`mobile_scanner` the first time; refused, the code can still be typed. Network actions show a spinner and a readable error
 ("No family has this code", "Check the internet connection"). If the very first
 anonymous sign-in failed (no network), only a *Try again* button is shown.
 
@@ -756,6 +767,7 @@ Since Android 13, posting notifications needs a runtime permission
 | `SYSTEM_ALERT_WINDOW` "Display over other apps" | Special (settings screen) | Coming to the front at the end; guard window | Setup screen |
 | `POST_NOTIFICATIONS` | Runtime (system prompt) | Countdown in the status bar | Setup screen |
 | Battery "Unrestricted" (not a manifest permission) | A choice on the app's system page | Alarms and child mode not stopped in the background | Setup screen |
+| `CAMERA` | Runtime (system prompt) | Scanning the family QR code | The first time *Scan the QR code* is used |
 | `USE_EXACT_ALARM` (13+), `SCHEDULE_EXACT_ALARM` (≤ 12) | Normal / granted at install | Alarm on time, even in Doze | Never |
 | `RECEIVE_BOOT_COMPLETED` | Normal | Child mode: reopen the app after a restart | Never |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Normal | Child mode: the service that listens to unlocks | Never |

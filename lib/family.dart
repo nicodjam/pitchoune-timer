@@ -65,6 +65,21 @@ class FamilyService extends ChangeNotifier {
     return List.generate(codeLength, (_) => _alphabet[r.nextInt(_alphabet.length)]).join();
   }
 
+  /// Text of the family QR code. The prefix makes sure a random QR code
+  /// (a web link, a product) is never taken for a family.
+  static const qrPrefix = 'pitchoune-family:';
+
+  static String qrPayload(String id) => '$qrPrefix$id';
+
+  /// The family code in a scanned QR code, or null if it is not one of ours.
+  static String? codeFromQr(String? raw) {
+    if (raw == null || !raw.startsWith(qrPrefix)) return null;
+    final code = normalize(raw.substring(qrPrefix.length));
+    if (code.length != codeLength) return null;
+    if (code.split('').any((c) => !_alphabet.contains(c))) return null;
+    return code;
+  }
+
   /// "ABCDEFGHJKLM" → "ABCD-EFGH-JKLM"
   static String format(String code) =>
       [for (var i = 0; i < code.length; i += 4) code.substring(i, min(i + 4, code.length))].join('-');

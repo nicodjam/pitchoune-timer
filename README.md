@@ -111,7 +111,7 @@ If it stops before the upload, `pubspec.yaml` is put back as it was.
 |---|---|
 | `source tool/env.sh` | Finds Flutter, the Android SDK (adb, apksigner), Java, Node.js, the Firebase and FlutterFire CLIs; adds them to the `PATH` of the terminal; checks each one and says how to install what is missing. `tool/env.sh --print` prints the `export` lines to paste into `~/.bashrc` |
 | `tool/connect.sh <ip:port>` | Connects a tablet in wireless debugging and remembers it for the other scripts (`--pair <ip:port>` the first time). Without argument: choose among the connected devices |
-| `tool/build.sh` | Builds the release APK and **checks its signature**: the certificate of the APK (`apksigner`) must be the release key of `android/key.properties` (`keytool`), not the debug key. `--debug` accepts the debug key for a local test, `--check` only checks the last build |
+| `tool/build.sh` | Builds the release APK, **checks its signature**, and copies it as `build/pitchoune-timer-<version>-<N>.apk` (the file sent to the testers): the certificate of the APK (`apksigner`) must be the release key of `android/key.properties` (`keytool`), not the debug key. `--debug` accepts the debug key for a local test, `--check` only checks the last build |
 | `tool/install.sh` | Installs the last build as an update on the remembered tablet (the app keeps its data). Warns if the code changed since the build, and explains the usual failures (other signing key, downgrade) |
 | `tool/logs.sh` | The app's logs only (Dart, native code, crashes, background starts). `--clear` empties the buffer, `-f` follows live, `--all` saves everything to a file |
 | `tool/release.sh` | A version for the testers (above) |
@@ -137,8 +137,8 @@ flutter analyze      # static analysis
 ```
 
 On first launch, a device either **creates a family** or **joins** one by
-typing its family code (shown by the family button on the home screen of a
-device that is already set up).
+scanning the QR code shown by the family button on the home screen of a
+device that is already set up (or typing the code written under it).
 
 On Android, a **Setup** screen lists everything to allow, as soon as the app
 starts (and in ⚙ → *Permissions and setup*):

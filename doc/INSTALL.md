@@ -24,10 +24,11 @@ On the Android tablet or phone:
 
 ## 2. First launch
 
-- **First device of the family:** *Create a family*. The family code (12
-  characters) is then shown by the family button on the home screen: write it
-  down, the other devices need it.
-- **Other devices:** *Join a family* and type the family code.
+- **First device of the family:** *Create a family*.
+- **Other devices:** on the first device, tap the **family button** of the
+  home screen: it shows a QR code. On the new device, *Join a family* →
+  **Scan the QR code**, allow the camera, and point it at the first device.
+  (No camera? Type the 12-character code written under the QR code.)
 - Add the children (name, avatar, color) and their minutes. Changing a bank
   needs the **parent code: 728**.
 
@@ -51,7 +52,10 @@ their timer. In the **child's account**:
 1. Make the app available: for a restricted profile, turn Pitchoune Timer on
    in the profile's allowed apps (from the owner account); for a user, install
    it from the invitation as above.
-2. Open Pitchoune Timer once, join the family (same family code).
+2. Open Pitchoune Timer once, join the family: scan the QR code of another
+   device of the family (phone, other tablet). On a single shared tablet, the
+   owner account cannot be on screen at the same time: type the code (written
+   under the QR code in the owner account's family button).
 3. ⚙ (parent code) → **Child** → choose the child.
 4. The **Setup** screen opens: allow every line, including **Home screen of
    this account** (choose "Pitchoune Timer"). The app then opens after a

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'effects.dart';
 import 'family.dart';
+import 'family_qr.dart';
 import 'theme.dart';
 
 /// First screen on a new device: create a family, or join one with its code.
@@ -54,6 +55,14 @@ class _FamilyScreenState extends State<FamilyScreen> {
         final ok = await widget.family.join(_code.text);
         return ok ? null : 'No family has this code. Check it and try again.';
       });
+
+  /// Join by pointing the camera at the QR code of a device of the family.
+  Future<void> _scan() async {
+    final code = await scanFamilyCode(context);
+    if (code == null || !mounted) return;
+    _code.text = FamilyService.format(code);
+    await _join();
+  }
 
   Future<void> _retrySignIn() => _run(() async {
         final ok = await widget.family.signIn();
@@ -110,8 +119,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       else ...[
                         _Panel(
                           title: 'New family',
-                          text: 'First device of the family? Create it, then type its code on the '
-                              'other devices.',
+                          text: 'First device of the family? Create it, then scan its QR code '
+                              'with the other devices.',
                           child: FilledButton.icon(
                             onPressed: _busy ? null : _create,
                             style: FilledButton.styleFrom(backgroundColor: kPurple),
@@ -122,11 +131,29 @@ class _FamilyScreenState extends State<FamilyScreen> {
                         const SizedBox(height: 16),
                         _Panel(
                           title: 'Join a family',
-                          text: 'Type the family code shown on a device that is already set up '
-                              '(family button on the home screen).',
+                          text: 'On a device that is already set up, open the family button of '
+                              'the home screen: it shows a QR code. Scan it with this device.',
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              FilledButton.icon(
+                                onPressed: _busy ? null : _scan,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: kPurple,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  textStyle:
+                                      const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                                ),
+                                icon: const Icon(Icons.qr_code_scanner_rounded),
+                                label: const Text('Scan the QR code'),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'or type the code shown under it:',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.black54),
+                              ),
+                              const SizedBox(height: 8),
                               TextField(
                                 controller: _code,
                                 enabled: !_busy,
@@ -145,10 +172,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              FilledButton.icon(
+                              OutlinedButton.icon(
                                 onPressed:
                                     _busy || codeLength != FamilyService.codeLength ? null : _join,
-                                style: FilledButton.styleFrom(backgroundColor: kPurple),
                                 icon: const Icon(Icons.group_add_rounded),
                                 label: const Text('Join'),
                               ),

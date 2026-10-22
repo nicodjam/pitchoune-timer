@@ -46,7 +46,7 @@ trap '[[ $uploaded == 0 ]] && git checkout -q pubspec.yaml && warn "Stopped: pub
 # 3. Tests, then the build, checked to be signed with the release key.
 flutter test
 "$ROOT/tool/build.sh"
-apk=build/app/outputs/flutter-apk/app-release.apk
+apk=$(named_apk)   # build/pitchoune-timer-<version>-<N>.apk, made by tool/build.sh
 
 # 4. Firebase app id of this Android app (from google-services.json).
 package=$(sed -n 's/^ *applicationId = "\(.*\)"/\1/p' android/app/build.gradle.kts)
