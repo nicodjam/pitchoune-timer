@@ -1,183 +1,245 @@
+<p align="center">
+  <img src="assets/icon/icon.png" width="120" alt="Pitchoune Timer icon">
+</p>
+
 # Pitchoune Timer
 
-A timer for children. Each child has a **time bank**: an adult deposits minutes,
-and the child withdraws the amount of their choice, which is spent as an
-animated countdown. When a countdown ends, the app comes to the foreground,
-even over other apps, and offers to withdraw a little more.
+**Screen time, managed like pocket money.**
 
-The time banks are shared between all the family's devices through
-**Cloud Firestore**.
+Each child has a **time bank**. A parent puts minutes in it; the child decides
+when to spend them and how many: they withdraw an amount, and a colourful
+countdown starts. When time is up, Pitchoune Timer comes back to the front,
+even over a game or a video, and the child chooses: take a little more from
+the bank, or stop.
 
-Flutter app, targeting Android first.
+The banks are shared by every tablet and phone of the family: minutes given on
+a parent's phone show up at once on the children's tablet.
 
-## Firebase setup (once)
+> Pitchoune Timer is an Android app shared with family and friends.
+> To install it, see the [installation guide](doc/INSTALL.md).
+> **Developers:** everything is in the [architecture document](doc/ARCHITECTURE.md)
+> (design, code, learning notes, and chapter 10 for setup, build and release).
 
-The app needs a Firebase project. Everything below is free (Spark plan, no
-credit card).
+---
 
-1. **Create the project.** On <https://console.firebase.google.com>, *Add
-   project*, name it `pitchoune-timer`. Google Analytics is not needed.
-2. **Anonymous sign-in.** *Build → Authentication → Get started → Sign-in
-   method → Anonymous → Enable*.
-3. **Database.** *Build → Firestore Database → Create database*, location
-   `europe-west9 (Paris)`, **production mode**.
-4. **Security rules.** In *Firestore Database → Rules*, replace the content with
-   [`firestore.rules`](firestore.rules), then *Publish*.
-5. **Link the app.** On the development PC:
+## Contents
 
-   ```bash
-   # Firebase CLI (one of the two)
-   npm install -g firebase-tools          # if Node.js is installed
-   curl -sL https://firebase.tools | bash # otherwise
+1. [The idea](#1-the-idea)
+2. [First launch: create or join a family](#2-first-launch-create-or-join-a-family)
+3. [Setup: what Android must allow](#3-setup-what-android-must-allow)
+4. [For parents: children and minutes](#4-for-parents-children-and-minutes)
+5. [For children: taking time](#5-for-children-taking-time)
+6. [When time is up](#6-when-time-is-up)
+7. [The child's own tablet account (child mode)](#7-the-childs-own-tablet-account-child-mode)
+8. [Settings](#8-settings)
+9. [Questions and problems](#9-questions-and-problems)
 
-   firebase login
-   dart pub global activate flutterfire_cli
-   export PATH="$PATH:$HOME/.pub-cache/bin"   # add it to ~/.bashrc too
+---
 
-   # At the root of the project
-   flutterfire configure --project=<firebase-project-id> --platforms=android,ios
-   ```
+## 1. The idea
 
-   `flutterfire configure` creates `lib/firebase_options.dart` and
-   `android/app/google-services.json`, and adds the Google Services plugin to the
-   Gradle files. Commit these changes.
-
-## Releasing (family and friends)
-
-Testers install the app from Firebase App Distribution; their guide is
-[`doc/INSTALL.md`](doc/INSTALL.md).
-
-### One-time setup
-
-1. **Firebase app.** The application id is `fr.pitchoune.timer`
-   (`android/app/build.gradle.kts`). Register it in Firebase and regenerate the
-   configuration files, then commit them:
-
-   ```bash
-   flutterfire configure --project=pitchoune-timer --platforms=android \
-       --android-package-name=fr.pitchoune.timer --yes
-   ```
-
-   Devices that run the old `com.example.pitchoune_timer` build see the new one
-   as another app: uninstall the old one, then set the new one up again.
-
-2. **Release key.** Updates are only accepted when signed with the same key,
-   so create it once and **back it up** (a lost key means testers must
-   uninstall and reinstall):
-
-   ```bash
-   keytool -genkey -v -keystore ~/pitchoune-release.jks -keyalg RSA \
-       -keysize 2048 -validity 10000 -alias pitchoune
-   ```
-
-   Then create `android/key.properties` (ignored by git):
-
-   ```properties
-   storePassword=<password>
-   keyPassword=<password>
-   keyAlias=pitchoune
-   storeFile=/home/<you>/pitchoune-release.jks
-   ```
-
-3. **Testers.** Firebase console → *Release & Monitor → App Distribution →
-   Get started*. In *Testers & Groups*, create a group whose alias is
-   `family` and add the testers' email addresses.
-
-### Every release
-
-From `main`:
-
-```bash
-tool/release.sh "What changed, in a sentence for the testers"
-tool/release.sh "What changed" 1.1.0     # also sets a new version name
-```
-
-The script:
-1. checks the release key, the tools, that everything is committed, and asks
-   for confirmation if the branch is not `main`;
-2. adds one to the build number (`version: name+build` in `pubspec.yaml`);
-3. runs the tests, builds the APK and checks it is signed with the release
-   key (`tool/build.sh`);
-4. uploads it to App Distribution for the `family` group
-   (`PITCHOUNE_TESTERS=<alias>` for another group);
-5. commits `pubspec.yaml` and tags `v<name>+<build>`, then **asks** before
-   pushing the branch and the tag to GitHub.
-
-If it stops before the upload, `pubspec.yaml` is put back as it was.
-
-## Helper scripts (`tool/`)
-
-| Script | What it does |
+| | |
 |---|---|
-| `source tool/env.sh` | Finds Flutter, the Android SDK (adb, apksigner), Java, Node.js, the Firebase and FlutterFire CLIs; adds them to the `PATH` of the terminal; checks each one and says how to install what is missing. `tool/env.sh --print` prints the `export` lines to paste into `~/.bashrc` |
-| `tool/connect.sh <ip:port>` | Connects a tablet in wireless debugging and remembers it for the other scripts (`--pair <ip:port>` the first time). Without argument: choose among the connected devices |
-| `tool/build.sh` | Builds the release APK, **checks its signature**, and copies it as `build/pitchoune-timer-<version>-<N>.apk` (the file sent to the testers): the certificate of the APK (`apksigner`) must be the release key of `android/key.properties` (`keytool`), not the debug key. `--debug` accepts the debug key for a local test, `--check` only checks the last build |
-| `tool/install.sh` | Installs the last build as an update on the remembered tablet (the app keeps its data). Warns if the code changed since the build, and explains the usual failures (other signing key, downgrade) |
-| `tool/logs.sh` | The app's logs only (Dart, native code, crashes, background starts). `--clear` empties the buffer, `-f` follows live, `--all` saves everything to a file |
-| `tool/release.sh` | A version for the testers (above) |
-| `tool/generate_icons.py` | Regenerates the launcher icons |
+| 🏦 **A bank of minutes per child** | Parents add minutes (for a chore, on Saturday morning…) or remove some. |
+| 🎯 **The child chooses** | 5 minutes now, 30 minutes later: they learn to manage their time. |
+| ⏱️ **A visible countdown** | In the app, and in the status bar while they use another app. |
+| 🔔 **A clear end** | The app comes back to the front and the child must choose: more time, or stop. |
+| 👨‍👩‍👧 **Shared** | Every device of the family sees the same banks, live. No account to create. |
+| 🔒 **Parent code** | Changing a bank and the settings need the parent code. |
 
-Typical session:
+A minute started is a minute used: the bank always shows whole minutes
+("12 min", "1 h 05 min").
 
-```bash
-source tool/env.sh
-tool/connect.sh 10.83.57.41:44667      # port shown in Wireless debugging
-tool/build.sh && tool/install.sh
-tool/logs.sh --clear                   # then reproduce the problem
-tool/logs.sh
-```
+---
 
-## Run
+## 2. First launch: create or join a family
 
-```bash
-flutter pub get
-flutter run          # on a connected phone or tablet (USB or wireless debugging)
-flutter test         # unit and widget tests (no Firebase needed)
-flutter analyze      # static analysis
-```
+A **family** links the devices that share the same children and banks.
 
-On first launch, a device either **creates a family** or **joins** one by
-scanning the QR code shown by the family button on the home screen of a
-device that is already set up (or typing the code written under it).
+<p>
+  <img src="doc/screenshots/family.png" width="240" alt="First screen">
+  <img src="doc/screenshots/family-qr.png" width="240" alt="Family QR code">
+  <img src="doc/screenshots/scan.png" width="240" alt="Scanning the QR code">
+</p>
 
-On Android, a **Setup** screen lists everything to allow, as soon as the app
-starts (and in ⚙ → *Permissions and setup*):
-- "Display over other apps": the end of a countdown shows up over other apps,
-  and the child cannot leave a paused or ended countdown;
-- notifications: the minutes left are shown in the status bar during a
-  countdown;
-- no battery restriction: alarms and child mode keep working in the
-  background;
-- in child mode, the home screen of the account.
+- **First device** (a parent's phone or tablet): **Create a family**.
+- **Each other device**: on the first device, tap the **family button** of the
+  home screen: it shows a QR code. On the new device, **Join a family → Scan
+  the QR code**, allow the camera, and point it at the QR code. That's it.
+- No camera, or a single tablet shared between a parent account and a child
+  account? Type the 12-character code written under the QR code.
 
-Bank changes, the settings, and leaving a paused or ended countdown need the
-parent code.
+The family code is the key to your family's data: keep it within the family.
+Leaving the family (family button → *Leave this family*) needs the parent code.
 
-## Parent and child tablet accounts
+The first launch needs the internet; afterwards the app also works offline and
+catches up when the connection comes back.
 
-The ⚙ settings (parent code) set who uses **this tablet account**:
-- **Parent** (default): the list of every child, banks can be changed.
-- **Child**: the app opens straight on that child's countdown; the list of
-  children is not shown. The child stays in the app until they start a
-  countdown, and unlocking the tablet always opens it, even if Android had
-  closed it (a discreet "child mode" notification shows the service doing
-  that). A *Parent* button (code) lets an adult leave the app.
-  In the child's account, make Pitchoune Timer the **home screen** (button in
-  the settings, child mode): it then opens after a restart and on the Home
-  button, and the child opens their apps from it ("My apps", during a
-  countdown). On Samsung, also set the app's battery usage to
-  **Unrestricted**.
+---
 
-These settings are stored per Android user profile, so a shared tablet can
-have a parent account and a child account set differently.
+## 3. Setup: what Android must allow
 
-## Launcher icon
+<img src="doc/screenshots/setup.png" width="240" align="right" alt="Setup screen">
 
-The pirate stopwatch icon is drawn in `tool/generate_icons.py`. To change it,
-edit the drawing and run `python3 tool/generate_icons.py` (needs `pillow` and
-`playwright`).
+As soon as the app starts, a **Setup** screen lists what Android must allow.
+Tap **Allow** on each line, accept in the screen that opens, then come back:
+the line gets a green ✓.
 
-## Documentation
+- **Display over other apps**: the end of a countdown shows up over the app in
+  use, and the child cannot leave a paused or ended countdown.
+- **Notifications**: the time left in the status bar.
+- **No battery restriction**: Android does not stop the alarms in the
+  background. In the screen that opens: *Battery → Unrestricted*.
+- **Home screen of this account** (child mode only, see §7).
 
-The architecture and the learning notes (Dart/Flutter, and the Android
-platform) are in [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md).
+*Later* keeps the list for the next launch. It is always in ⚙ → *Permissions
+and setup*.
+
+<br clear="right">
+
+---
+
+## 4. For parents: children and minutes
+
+<p>
+  <img src="doc/screenshots/home.png" width="240" alt="Home screen">
+  <img src="doc/screenshots/parent-code.png" width="240" alt="Parent code">
+</p>
+
+- **Add a child**: the *Add a child* button, then a name and an animal. A new
+  child starts with an empty bank.
+- **Give or take minutes**: the − and + buttons of the child's card. Hold a
+  button down to go faster. While parent mode is locked, the card shows a
+  🔒 instead: tap it and type the **parent code**.
+- **Parent mode** stays open **2 minutes** after the code (a banner shows it),
+  then locks itself again.
+- **Long press on a card**: edit the name or the animal, reset the bank to
+  zero, or delete the child (the last two need the parent code).
+- A card shows when the child's timer is **running on another device**: one
+  child, one countdown at a time.
+
+The parent code is **728** in this version.
+
+---
+
+## 5. For children: taking time
+
+<p>
+  <img src="doc/screenshots/choose.png" width="240" alt="Choosing the amount">
+  <img src="doc/screenshots/running.png" width="240" alt="Countdown">
+  <img src="doc/screenshots/status-bar.png" width="240" alt="Status bar">
+</p>
+
+1. Tap your card (in child mode, your screen is already open).
+2. **Choose how much**: 5, 10, 15 or 30 minutes, *All*, or adjust minute by
+   minute with − and +. You cannot take more than your bank.
+3. **Start**: the countdown begins. The minutes are taken from your bank as
+   they pass.
+4. Go and play: the **time left stays in the status bar**, next to the clock,
+   in minutes, then in seconds during the last minute. Pull the notifications
+   down to see the exact time.
+5. **Pause** if you stop early: only the time used is taken (a minute started
+   counts as used). From the pause, *Resume* or *Stop*.
+
+The screen stays on while the countdown is shown in the app.
+
+---
+
+## 6. When time is up
+
+<img src="doc/screenshots/finished.png" width="240" align="right" alt="Time's up">
+
+The alarm rings and **Pitchoune Timer comes back to the front**, over the game
+or the video, even if the tablet was locked. Confetti! Then the child must
+choose:
+
+- **+1 min, +5 min, +10 min** or **All**: a little more, taken from the bank.
+  The app then hands the screen back to the game or the video.
+- **Stop**: the countdown is over.
+- With an **empty bank**, there is nothing more to take: "The bank is empty.
+  Ask a parent for more time!"
+
+Until the child chooses, they **stay on this screen**: going to another app
+shows a full screen window that brings them back. A parent can leave with the
+discreet *Parent* button and the code.
+
+<br clear="right">
+
+---
+
+## 7. The child's own tablet account (child mode)
+
+On a tablet with a **user account for the child** (Android *users* or
+*restricted profile*), Pitchoune Timer can become the child's home base.
+
+<p>
+  <img src="doc/screenshots/settings.png" width="240" alt="Settings in child mode">
+  <img src="doc/screenshots/my-apps.png" width="240" alt="My apps">
+</p>
+
+Set it up **in the child's account**: open the app, join the family, then
+⚙ (parent code) → **Child** → choose the child, and allow everything in the
+Setup screen, including **Home screen of this account** (choose "Pitchoune
+Timer").
+
+Then:
+- The app **opens straight on the child's screen**: no list of children, no
+  bank changes.
+- It is the **home screen** of the account: it shows after a restart, on the
+  Home button, and at every unlock (unless a countdown is running).
+- The child **stays on it until they start a countdown**. During the
+  countdown, **My apps** (next to *Pause*) opens their apps. On a restricted
+  profile, these are exactly the apps you allowed for it.
+- When the countdown ends, they come back to it. With an empty bank, they
+  stay there until a parent adds minutes.
+- A discreet *Parent* button (code) lets an adult use the tablet: *Apps
+  (parent)* then gives the list of apps.
+- A quiet "child mode" notification shows that the app watches the unlocks.
+
+Each Android account keeps its own settings: the parent account stays in
+parent mode, with its usual home screen.
+
+---
+
+## 8. Settings
+
+⚙ on the home screen (parent mode) or on the child's screen (child mode),
+behind the parent code:
+
+- **Who uses this tablet account?** *Parent* (every child, banks can be
+  changed) or *Child* (one child, child mode).
+- **Which child?** in child mode.
+- **Permissions and setup**: the Setup screen.
+- At the bottom, the **version** of the app, e.g. "1.0.0 (build 6)": useful
+  to know which version a tablet runs.
+
+---
+
+## 9. Questions and problems
+
+**Time is up but the app did not come back.** Check the Setup screen:
+*Display over other apps* and *No battery restriction* must have a ✓.
+
+**No time in the status bar.** *Notifications* must have a ✓ in the Setup
+screen.
+
+**In child mode, the app does not open after a restart.** *Home screen of
+this account* must have a ✓: Setup screen of the child's account.
+
+**"No family has this code".** Check the code (the letters O and I and the
+digits 0 and 1 are never used), or scan the QR code instead.
+
+**The banks do not update on another device.** That device has no internet
+for now; it catches up as soon as it is back online.
+
+**A new version is available.** App Tester announces it (and an email): tap
+*Download*. Settings, family and banks are kept. Do not uninstall first: see
+the [installation guide](doc/INSTALL.md).
+
+**The app shows "Pitchoune Timer could not start".** Note the message under
+it and send it to the person who shared the app with you.
+
+---
+
+*Developers: the design, the code, the Android tricks and the build and
+release steps are in [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md).*

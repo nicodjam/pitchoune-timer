@@ -26,8 +26,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEVICE_FILE="$ROOT/.device"   # last device chosen by tool/connect.sh (not in git)
 
 # Release APK named after the app and the version of pubspec.yaml, e.g.
-# build/pitchoune-timer-1.0.0-4.apk: the name testers see in Firebase
-# App Distribution. (No "+" in the name: it is awkward in URLs.)
+# build/pitchoune-timer-1.0.0-4.apk: easy to find, archive or send by hand.
+# (Firebase App Distribution does not keep file names: there, the version
+# and the release notes identify a build.) No "+" in the name: awkward in URLs.
 named_apk() {
   local version name build
   version=$(sed -n 's/^version: *//p' "$ROOT/pubspec.yaml")

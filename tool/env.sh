@@ -125,7 +125,7 @@ echo "== Project"
 if [[ -n $ANDROID_HOME ]]; then ok "ANDROID_HOME=$ANDROID_HOME"
 else err "Android SDK not found"; hint "install Android Studio, or set ANDROID_HOME"; _pt_missing=$((_pt_missing + 1)); fi
 if [[ -f $ROOT/android/key.properties ]]; then ok "release key: android/key.properties"
-else warn "no android/key.properties: release builds use the debug key (README, Releasing)"; fi
+else warn "no android/key.properties: release builds use the debug key (doc/ARCHITECTURE.md §10.4)"; fi
 if command -v firebase >/dev/null; then
   if firebase login:list 2>/dev/null | grep -q "@"; then ok "Firebase: $(firebase login:list 2>/dev/null | grep -o '[^ ]*@[^ ]*' | head -1)"
   else warn "Firebase CLI not signed in"; hint "firebase login"; fi

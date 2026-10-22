@@ -1,4 +1,4 @@
-"""Generates the Pitchoune Timer launcher icons (a pirate stopwatch).
+"""Generates the Pitchoune Timer launcher icons (a friendly stopwatch).
 
 Usage (from the project root):
     pip install pillow playwright && playwright install chromium
@@ -8,12 +8,27 @@ Edit the SVG drawing in art() and background(), then run the script again:
 it rewrites assets/icon/ and every Android and iOS launcher icon.
 """
 
+import math
+
 INK = "#2B2350"
 
 def art():
-    # Everything is drawn in a 1024x1024 box, centered around (512, 530).
+    # Everything is drawn in a 1024x1024 box, centered around (512, 580).
+    # A friendly stopwatch: two big round eyes, a wide smile and pink cheeks.
+    ticks = "".join(
+        f'<circle cx="{512 + 170*math.sin(i*math.pi/6):.1f}" cy="{600 - 170*math.cos(i*math.pi/6):.1f}" '
+        f'r="11" fill="{INK}" fill-opacity="0.25"/>'
+        for i in range(12)
+    )
+    eye = lambda x: f"""
+    <circle cx="{x}" cy="575" r="48" fill="#FFFFFF" stroke="{INK}" stroke-width="14"/>
+    <circle cx="{x + 6}" cy="580" r="27" fill="{INK}"/>
+    <circle cx="{x + 16}" cy="568" r="9" fill="#FFFFFF"/>"""
     return f"""
-  <!-- side button of the stopwatch -->
+  <!-- top crown of the stopwatch -->
+  <rect x="487" y="318" width="50" height="40" rx="8" fill="#FFA62B" stroke="{INK}" stroke-width="20"/>
+  <rect x="452" y="282" width="120" height="46" rx="16" fill="#FFA62B" stroke="{INK}" stroke-width="20"/>
+  <!-- side buttons of the stopwatch -->
   <g transform="rotate(62 512 600)">
     <rect x="477" y="306" width="70" height="70" rx="14" fill="#FFA62B" stroke="{INK}" stroke-width="20"/>
   </g>
@@ -23,48 +38,18 @@ def art():
   <!-- stopwatch body -->
   <circle cx="512" cy="600" r="250" fill="#FFA62B" stroke="{INK}" stroke-width="24"/>
   <circle cx="512" cy="600" r="200" fill="#FFFFFF"/>
-  <!-- dial ticks -->
-  {''.join(f'<circle cx="{512 + 170*__import__("math").sin(i*3.14159/6):.1f}" cy="{600 - 170*__import__("math").cos(i*3.14159/6):.1f}" r="11" fill="{INK}" fill-opacity="0.3"/>' for i in range(12))}
-  <!-- face, clipped to the dial -->
-  <clipPath id="dial"><circle cx="512" cy="600" r="200"/></clipPath>
-  <g clip-path="url(#dial)">
-    <!-- eye patch strap -->
-    <path d="M 300 470 L 740 655" stroke="{INK}" stroke-width="18" stroke-linecap="round"/>
-  </g>
+  {ticks}
   <!-- cheeks -->
-  <circle cx="400" cy="660" r="30" fill="#FF7EB3" fill-opacity="0.45"/>
-  <circle cx="630" cy="670" r="30" fill="#FF7EB3" fill-opacity="0.45"/>
-  <!-- open eye -->
-  <circle cx="430" cy="565" r="46" fill="#FFFFFF" stroke="{INK}" stroke-width="14"/>
-  <circle cx="440" cy="558" r="22" fill="{INK}"/>
-  <circle cx="447" cy="550" r="7" fill="#FFFFFF"/>
-  <!-- eye patch -->
-  <ellipse cx="590" cy="585" rx="56" ry="46" fill="{INK}" transform="rotate(22 590 585)"/>
-  <!-- grin with a gold tooth -->
-  <path d="M 432 668 Q 515 770 604 668 Q 515 700 432 668 Z" fill="{INK}"/>
-  <rect x="528" y="684" width="24" height="22" rx="4" fill="#FFC94D"/>
-  <!-- tricorn hat -->
-  <path d="M 222 415 C 290 250 420 195 512 212 C 604 195 734 250 802 415
-           C 706 372 606 362 512 372 C 418 362 318 372 222 415 Z" fill="{INK}"/>
-  <path d="M 222 415 C 318 372 418 362 512 372 C 606 362 706 372 802 415"
-        fill="none" stroke="#FFC94D" stroke-width="18" stroke-linecap="round"/>
-  <!-- skull and crossbones -->
-  <g fill="#FFFFFF">
-    <g transform="rotate(35 512 300)">
-      <rect x="452" y="290" width="120" height="20" rx="10"/>
-      <circle cx="452" cy="292" r="12"/><circle cx="452" cy="308" r="12"/>
-      <circle cx="572" cy="292" r="12"/><circle cx="572" cy="308" r="12"/>
-    </g>
-    <g transform="rotate(-35 512 300)">
-      <rect x="452" y="290" width="120" height="20" rx="10"/>
-      <circle cx="452" cy="292" r="12"/><circle cx="452" cy="308" r="12"/>
-      <circle cx="572" cy="292" r="12"/><circle cx="572" cy="308" r="12"/>
-    </g>
-    <circle cx="512" cy="282" r="36"/>
-    <rect x="490" y="296" width="44" height="26" rx="8"/>
-  </g>
-  <circle cx="499" cy="280" r="9" fill="{INK}"/>
-  <circle cx="525" cy="280" r="9" fill="{INK}"/>
+  <circle cx="395" cy="655" r="34" fill="#FF7EB3" fill-opacity="0.5"/>
+  <circle cx="629" cy="655" r="34" fill="#FF7EB3" fill-opacity="0.5"/>
+  <!-- eyebrows, raised: a happy look -->
+  <path d="M 395 505 Q 432 488 468 503" fill="none" stroke="{INK}" stroke-width="13" stroke-linecap="round"/>
+  <path d="M 556 503 Q 592 488 629 505" fill="none" stroke="{INK}" stroke-width="13" stroke-linecap="round"/>
+  {eye(432)}
+  {eye(592)}
+  <!-- wide smile with a tongue -->
+  <path d="M 440 665 Q 512 760 584 665 Q 512 690 440 665 Z" fill="{INK}"/>
+  <path d="M 478 705 Q 512 690 546 705 Q 530 732 512 733 Q 494 732 478 705 Z" fill="#FF7E9A"/>
 """
 
 def background():
@@ -84,7 +69,7 @@ def background():
 
 def svg(with_background: bool, scale: float) -> str:
     bg = background() if with_background else ""
-    t = f"translate({512 - 512*scale:.1f} {512 - 530*scale:.1f}) scale({scale})"
+    t = f"translate({512 - 512*scale:.1f} {512 - 580*scale:.1f}) scale({scale})"
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">{bg}<g transform="{t}">{art()}</g></svg>'
 
 
@@ -114,7 +99,7 @@ async def _render(pairs):
 
 
 def main():
-    full_svg, fg_svg = svg(True, 0.92), svg(False, 0.72)
+    full_svg, fg_svg = svg(True, 1.25), svg(False, 1.0)
     open(os.path.join(ICON_DIR, "icon.svg"), "w").write(full_svg)
     open(os.path.join(ICON_DIR, "icon_foreground.svg"), "w").write(fg_svg)
     full_png = os.path.join(ICON_DIR, "icon.png")

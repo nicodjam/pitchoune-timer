@@ -175,6 +175,8 @@ class HomeScreen extends StatelessWidget {
                   style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
                   onPressed: () async {
                     Navigator.of(sheet).pop();
+                    // A child must not take the device out of the family.
+                    if (!await parent.ensure(context) || !context.mounted) return;
                     final ok = await showDialog<bool>(
                       context: context,
                       builder: (d) => AlertDialog(
@@ -195,7 +197,7 @@ class HomeScreen extends StatelessWidget {
                     );
                     if (ok == true) await onLeaveFamily!();
                   },
-                  icon: const Icon(Icons.logout_rounded),
+                  icon: Icon(parent.unlocked ? Icons.logout_rounded : Icons.lock_rounded),
                   label: const Text('Leave this family'),
                 ),
               ],

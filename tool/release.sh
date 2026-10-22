@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds a signed release APK, sends it to the testers (family and friends)
-# through Firebase App Distribution, then records it in git. See README,
-# "Releasing".
+# through Firebase App Distribution, then records it in git. See
+# doc/ARCHITECTURE.md §10.4.
 #
 #   tool/release.sh "What changed, for the testers"
 #   tool/release.sh "What changed" 1.1.0      # also changes the version name
@@ -19,7 +19,7 @@ group="${PITCHOUNE_TESTERS:-family}"   # Firebase App Distribution tester group 
 
 # 1. Checks: release key, tools, clean tree, branch.
 [[ -f android/key.properties ]] ||
-  die "android/key.properties is missing: create the release key first (README, Releasing)."
+  die "android/key.properties is missing: create the release key first (doc/ARCHITECTURE.md §10.4)."
 for tool in flutter firebase python3; do
   command -v "$tool" >/dev/null || die "$tool not found: run tool/env.sh to see how to install it."
 done
@@ -56,16 +56,18 @@ clients = json.load(open("android/app/google-services.json"))["client"]
 ids = [c["client_info"]["mobilesdk_app_id"] for c in clients
        if c["client_info"]["android_client_info"]["package_name"] == sys.argv[1]]
 if not ids:
-    sys.exit(f"No app {sys.argv[1]} in google-services.json: run flutterfire configure (README).")
+    sys.exit(f"No app {sys.argv[1]} in google-services.json: run flutterfire configure (doc/ARCHITECTURE.md §10.4).")
 print(ids[0])
 PY
 )
 
-# 5. Upload and invite the testers.
+# 5. Upload and invite the testers. The release notes start with the app
+#    name and version: App Distribution shows them everywhere (console, email,
+#    App Tester), unlike the file name, which it does not keep.
 firebase appdistribution:distribute "$apk" \
   --app "$app_id" \
   --groups "$group" \
-  --release-notes "$notes"
+  --release-notes "Pitchoune Timer ${version}: ${notes}"
 uploaded=1
 ok "Version ${version} sent to the \"${group}\" group"
 

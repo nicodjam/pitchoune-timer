@@ -34,7 +34,7 @@ if [[ $build == 1 ]]; then
   command -v flutter >/dev/null || die "flutter not found: run tool/env.sh to see how to install it."
   if [[ ! -f android/key.properties && $allow_debug == 0 ]]; then
     die "android/key.properties is missing: the APK would be signed with the debug key.
-  → create the release key (README, Releasing), or tool/build.sh --debug for a local test"
+  → create the release key (doc/ARCHITECTURE.md §10.4), or tool/build.sh --debug for a local test"
   fi
   version=$(sed -n 's/^version: *//p' pubspec.yaml)
   echo "== Building ${version}"
