@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -142,6 +144,7 @@ class _FamilyHomeState extends State<_FamilyHome> {
     deviceId: widget.deviceId,
   );
   final _parent = ParentLock();
+  StreamSubscription<String?>? _parentCode;
   bool _ready = false;
 
   /// Child the tablet is set to, if it still exists in the family.
@@ -154,6 +157,11 @@ class _FamilyHomeState extends State<_FamilyHome> {
   void initState() {
     super.initState();
     widget.settings.addListener(_syncChildMode);
+    // The family's parent code, also when it is changed on another device.
+    _parentCode = widget.family.parentCodeChanges(widget.familyId).listen(
+      (code) => _parent.code = code ?? kParentCode,
+      onError: (Object e) => debugPrint('Parent code: $e'),
+    );
     _store.load().then((_) {
       if (!mounted) return;
       setState(() => _ready = true);
@@ -183,6 +191,7 @@ class _FamilyHomeState extends State<_FamilyHome> {
   @override
   void dispose() {
     widget.settings.removeListener(_syncChildMode);
+    _parentCode?.cancel();
     _store.dispose();
     _parent.dispose();
     super.dispose();
@@ -190,7 +199,11 @@ class _FamilyHomeState extends State<_FamilyHome> {
 
   void _openSettings() {
     navigatorKey.currentState?.push(MaterialPageRoute<void>(
-      builder: (_) => SettingsScreen(settings: widget.settings, store: _store),
+      builder: (_) => SettingsScreen(
+        settings: widget.settings,
+        store: _store,
+        onChangeParentCode: widget.family.setParentCode,
+      ),
     ));
   }
 

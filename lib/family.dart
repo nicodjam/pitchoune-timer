@@ -113,6 +113,32 @@ class FamilyService extends ChangeNotifier {
     return true;
   }
 
+  // --- Parent code ------------------------------------------------------------
+  // Stored in families/{id}/settings/parent ({code: "1234"}), readable and
+  // writable by the members only (firestore.rules). Absent: the default code.
+
+  DocumentReference<Map<String, dynamic>> _parentDoc(String id) =>
+      _family(id).collection('settings').doc('parent');
+
+  /// The family's parent code, now and at every change (also made on another
+  /// device). Null while the family has kept the default code.
+  Stream<String?> parentCodeChanges(String id) => _parentDoc(id).snapshots().map((snap) {
+        final code = snap.data()?['code'];
+        return code is String ? code : null;
+      });
+
+  /// Changes the parent code of the whole family. Returns at once: this
+  /// device sees the new code immediately (Firestore's local cache), and
+  /// Firestore sends it to the others, later if there is no network now.
+  /// (Awaiting the write would wait for the server, forever when offline.)
+  void setParentCode(String code) {
+    final id = _familyId;
+    if (id == null) return;
+    _parentDoc(id)
+        .set({'code': code, 'changedAt': FieldValue.serverTimestamp()})
+        .catchError((Object e) => debugPrint('FamilyService.setParentCode: $e'));
+  }
+
   /// This device leaves the family. The children stay in the family for the
   /// other devices.
   Future<void> leave() async {

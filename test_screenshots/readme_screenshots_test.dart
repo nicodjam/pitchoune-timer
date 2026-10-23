@@ -315,7 +315,10 @@ void main() {
       await settings.load();
       await settings.setChildMode(demo.idOf('Lea'));
     });
-    await _show(tester, SettingsScreen(settings: settings, store: demo.store));
+    await _show(
+      tester,
+      SettingsScreen(settings: settings, store: demo.store, onChangeParentCode: (_) {}),
+    );
     await _save('settings');
     await _close(tester);
     demo.dispose();

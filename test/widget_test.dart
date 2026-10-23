@@ -17,6 +17,18 @@ Future<ChildrenStore> newStore({String deviceId = 'this-device'}) async {
 }
 
 void main() {
+  test('the parent code can be changed (synchronised from the family)', () {
+    final lock = ParentLock();
+    expect(isValidParentCode('1234'), isTrue);
+    expect(isValidParentCode('123'), isFalse); // 4 to 6 digits
+    expect(isValidParentCode('12a4'), isFalse);
+    lock.code = '4815';
+    expect(lock.tryUnlock(kParentCode), isFalse); // the default code no longer works
+    expect(lock.tryUnlock('4815'), isTrue);
+    lock.lock();
+    lock.dispose();
+  });
+
   test('family QR code: only our own codes are accepted', () {
     final id = FamilyService.newCode();
     expect(FamilyService.codeFromQr(FamilyService.qrPayload(id)), id);

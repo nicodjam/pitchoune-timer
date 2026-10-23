@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'child.dart';
 import 'effects.dart';
+import 'parent.dart';
 import 'screen.dart';
 import 'settings.dart';
 import 'setup_screen.dart';
@@ -9,9 +10,17 @@ import 'theme.dart';
 
 /// Settings of this tablet account. Only reachable with the parent code.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.settings, required this.store});
+  const SettingsScreen({
+    super.key,
+    required this.settings,
+    required this.store,
+    this.onChangeParentCode,
+  });
   final DeviceSettings settings;
   final ChildrenStore store;
+
+  /// Changes the family's parent code (every device); null hides the line.
+  final void Function(String code)? onChangeParentCode;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -122,6 +131,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   )),
                 ),
               ),
+              if (widget.onChangeParentCode != null) ...[
+                const SizedBox(height: 12),
+                Card(
+                  color: Colors.white,
+                  child: ListTile(
+                    leading: const Icon(Icons.password_rounded, color: kPurple),
+                    title: const Text('Parent code', style: TextStyle(fontWeight: FontWeight.w800)),
+                    subtitle: const Text('Change it on every device of the family'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () async {
+                      final code = await askNewParentCode(context);
+                      if (code == null || !context.mounted) return;
+                      widget.onChangeParentCode!(code);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Parent code changed on every device of the family.'),
+                      ));
+                    },
+                  ),
+                ),
+              ],
               if (childMode) ...[
                 const SizedBox(height: 28),
                 const Text(

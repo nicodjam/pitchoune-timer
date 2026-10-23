@@ -117,7 +117,8 @@ and setup*.
 - A card shows when the child's timer is **running on another device**: one
   child, one countdown at a time.
 
-The parent code is **728** in this version.
+The parent code is **728** at first. Change it in ⚙ → **Parent code** (4 to
+6 digits): the new code works at once on every device of the family.
 
 ---
 
@@ -137,7 +138,9 @@ The parent code is **728** in this version.
    in minutes, then in seconds during the last minute. Pull the notifications
    down to see the exact time.
 5. **Pause** if you stop early: only the time used is taken (a minute started
-   counts as used). From the pause, *Resume* or *Stop*.
+   counts as used). From the pause, *Resume* or *Stop*. After *Stop*, you are
+   back on the screen to choose your time, and you stay there until you start
+   a new countdown (or a parent unlocks it with the code).
 
 The screen stays on while the countdown is shown in the app.
 
@@ -153,7 +156,9 @@ choose:
 
 - **+1 min, +5 min, +10 min** or **All**: a little more, taken from the bank.
   The app then hands the screen back to the game or the video.
-- **Stop**: the countdown is over.
+- **Stop**: the countdown is over. The child goes back to the screen to choose
+  their time, and stays there: to use the tablet again they must start a new
+  countdown. Only a parent (*Parent* button and code) can leave it.
 - With an **empty bank**, there is nothing more to take: "The bank is empty.
   Ask a parent for more time!"
 
@@ -207,6 +212,8 @@ behind the parent code:
   changed) or *Child* (one child, child mode).
 - **Which child?** in child mode.
 - **Permissions and setup**: the Setup screen.
+- **Parent code**: a new code, typed twice (4 to 6 digits). It changes on every
+  device of the family; a device without internet gets it when it reconnects.
 - At the bottom, the **version** of the app, e.g. "1.0.0 (build 6)": useful
   to know which version a tablet runs.
 

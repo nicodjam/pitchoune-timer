@@ -7,6 +7,7 @@ rules_version = '2';
 //   families/{familyId}                     the family code is the document id
 //   families/{familyId}/members/{uid}       one document per device (anonymous user)
 //   families/{familyId}/children/{childId}  the children and their time banks
+//   families/{familyId}/settings/parent     the family's parent code ({code: "1234"})
 //
 // Access model: every device signs in anonymously. A device that knows the
 // family code can join the family (create its own member document); only
@@ -43,6 +44,14 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/families/$(familyId));
         allow delete: if signedIn() && request.auth.uid == uid;
         allow read: if isMember(familyId);
+      }
+
+      // Parent code: members only, and only a 4 to 6 digit code.
+      match /settings/{doc} {
+        allow read: if isMember(familyId);
+        allow create, update: if isMember(familyId) && doc == 'parent'
+          && request.resource.data.code is string
+          && request.resource.data.code.matches('^[0-9]{4,6}$');
       }
 
       match /children/{childId} {

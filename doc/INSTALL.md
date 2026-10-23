@@ -30,7 +30,8 @@ On the Android tablet or phone:
   **Scan the QR code**, allow the camera, and point it at the first device.
   (No camera? Type the 12-character code written under the QR code.)
 - Add the children (name, avatar, color) and their minutes. Changing a bank
-  needs the **parent code: 728**.
+  needs the **parent code: 728** at first; choose your own in ⚙ → *Parent
+  code*, it changes on every device of the family.
 
 As soon as the app starts, a **Setup** screen lists what Android must allow.
 Tap **Allow** on each line, accept in the screen that opens, then come back:

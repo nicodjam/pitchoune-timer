@@ -301,6 +301,7 @@ families/{familyCode}                    { createdAt }
 families/{familyCode}/members/{uid}      { joinedAt }          one per device
 families/{familyCode}/children/{childId} { name, avatar, colorIndex, seconds,
                                            createdAt, runningUntil, runningOn }
+families/{familyCode}/settings/parent    { code, changedAt }   the parent code
 ```
 
 The security rules, pasted in the Firebase console, enforce the access model:
@@ -310,6 +311,7 @@ The security rules, pasted in the Firebase console, enforce the access model:
 | Any signed-in device | Read **one** family document by its code (to check it exists before joining), and create a family |
 | Any signed-in device | Add or remove **itself** as a member of an existing family |
 | A member | Read and change the family's children |
+| A member | Read the parent code, and change it to 4 to 6 digits |
 | Nobody | List the families (a code cannot be discovered by browsing) |
 
 The rules also check the shape of a child (name of 1 to 20 characters, integer
@@ -383,14 +385,14 @@ because another device can change the child's bank while it is open; in the
 
 ```
             Start (withdraw N)            Pause
-   ┌────────┐ ───────────▶ ┌─────────┐ ─────────▶ ┌────────┐ ── Stop ──▶ home screen
-   │ choose │              │ running │            │ paused │             (child mode: choose)
+   ┌────────┐ ───────────▶ ┌─────────┐ ─────────▶ ┌────────┐ ── Stop ──▶ choose 🔒
+   │ choose │              │ running │            │ paused │
    └────────┘              └─────────┘ ◀───────── └────────┘
        │                     ▲    │       Resume       🔒 held
      Back                    │    │ remaining = 0
-       ▼          +1/+5/+10  │    ▼
-  home screen     or All     │  ┌──────────┐
-                             └──│ finished │ ── Stop ──▶ home screen (child mode: choose)
+   (not held)     +1/+5/+10  │    ▼
+       ▼          or All     │  ┌──────────┐
+  home screen                └──│ finished │ ── Stop ──▶ choose 🔒
                                 └──────────┘
                                    🔒 held        (Parent + code: leave from 🔒)
 ```
@@ -399,7 +401,9 @@ because another device can change the child's bank while it is open; in the
   whole bank if less is left) and the whole bank. Shortcuts 5 / 10 / 15 / 30 min
   and *All*, plus − and + buttons (one minute per step, held down to repeat).
   The default proposal is 10 minutes, or the whole bank if it holds less. This
-  is the only phase with a back arrow.
+  is the only phase with a back arrow, and only when it is not held: after a
+  *Stop* the choose screen is held 🔒, and the way out is the *Parent* button
+  (code).
 - **running**: only a *Pause* button. No back arrow, and the system back button
   does nothing: leaving a countdown always goes through *Pause* then *Stop*.
   The child may of course switch to another app (that is the point): the
@@ -411,13 +415,15 @@ because another device can change the child's bank while it is open; in the
   - *+1 min*, *+5 min*, *+10 min* (only those the bank can afford) or *All (…)*:
     starts a new countdown. If the alarm brought the app forward, the app is
     then **sent back**, revealing the app the child was using;
-  - *Stop*: the countdown is over; the app returns to its home screen, or in
-    child mode to the *choose* screen, where the child is held again;
+  - *Stop*: the countdown is over; the screen returns to the *choose* phase,
+    where the child is held again, **in parent mode too**. (It used to go back
+    to the home screen in parent mode, which set the child free with the
+    tablet: *Stop* had become a way to escape the time limit.)
   - a discreet *Parent* button lets a parent leave with the code.
 
   With an empty bank, no more time is offered: "The bank is empty. Ask a parent
-  for more time!". In child mode the child then stays on their choose screen,
-  held, until a parent adds minutes. (Version 1.0 also put the tablet to sleep
+  for more time!". After *Stop*, the child then stays on their choose screen,
+  held, until a parent adds minutes or leaves with the code. (Version 1.0 also put the tablet to sleep
   through a device administrator right; it was removed: holding the child in
   the app is what matters, and Google Play frowns on device administrators.)
 
@@ -541,19 +547,34 @@ anonymous sign-in failed (no network), only a *Try again* button is shown.
 
 | Element | Role |
 |---|---|
-| `kParentCode` | The code, `728` |
-| `ParentLock` | `ChangeNotifier`. `tryUnlock(code)` opens parent mode for 2 minutes; a 1-second ticker refreshes the banner and locks again at the end. `ensure(context)` returns true at once if unlocked, otherwise shows the keypad |
-| `_CodeDialog` | Big-key keypad, one dot per digit; checks automatically after the third digit, shakes off a wrong code |
+| `kParentCode` | The default code, `728`, for a family that never chose its own |
+| `ParentLock` | `ChangeNotifier`. `code` is the family's current code. `tryUnlock(code)` opens parent mode for 2 minutes; a 1-second ticker refreshes the banner and locks again at the end. `ensure(context)` returns true at once if unlocked, otherwise shows the keypad |
+| `_CodeDialog` | Big-key keypad, one dot per digit of the current code; checks automatically after the last digit, shakes off a wrong code |
+| `askNewParentCode` | Settings → *Parent code*: the new code typed twice, 4 to 6 digits (`isValidParentCode`) |
 | `ParentBanner` | "Parent mode · 1:45 · Lock" chip on the home screen |
 
 One `ParentLock` per family, created in `main.dart` next to the store, and
 shared by the home screen, the timer screen and the settings button.
 
-**A UI lock, not a security barrier.** The code is checked in the app, and it
-is written in the source code. It keeps a child from changing their own time;
-it does not protect against someone who reads the code or opens the database.
-Real protection would check the code on a server, for instance with a
-Firestore rule. Accepted here: the threat is a curious child, not an attacker.
+**One code for the whole family.** The code lives in Firestore,
+`families/{id}/settings/parent`. `_FamilyHome` listens to it
+(`FamilyService.parentCodeChanges`) and keeps `ParentLock.code` up to date: a
+code changed in the settings of one device works at once on that device
+(Firestore's local cache) and, within a second, on every other device that is
+online; an offline device gets it when it reconnects. No document yet: the
+default code. `setParentCode` does not wait for the server: Firestore's write
+future only completes once the server has it, which never happens offline.
+
+**A UI lock, not a security barrier.** The code is checked in the app. It
+keeps a child from changing their own time; it does not protect against
+someone who reads the database with the family's credentials (any member
+device can read the code, by design: every device must check it). Storing a
+hash instead would not help much: 4 to 6 digits are 10 000 to 1 000 000
+possibilities, tried in a fraction of a second. Real protection would check
+the code on a server (a Cloud Function), which the free plan does not offer.
+Accepted here: the threat is a curious child, not an attacker. The Firestore
+rules still make sure that only members read it and that it stays 4 to 6
+digits.
 `ParentLock` stores an expiry time rather than a boolean, so `unlocked` is
 computed (`now < until`) and can never stay open by mistake.
 

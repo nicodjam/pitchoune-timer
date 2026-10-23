@@ -232,13 +232,14 @@ class _TimerScreenState extends State<TimerScreen>
     _withdraw(_chosen);
   }
 
-  /// Leaves a finished or stopped countdown: back to the home screen, or in
-  /// child mode back to the choose phase.
-  void _leave() {
+  /// Leaves a finished or stopped countdown: back to the choose phase, where
+  /// the child is held until the next countdown. With [close] (a parent left
+  /// with the code, parent mode), back to the home screen instead.
+  void _leave({bool close = false}) {
     // The bank stays in whole minutes: a minute started but not finished is
     // given back (the time spent is rounded down, so the bank is rounded up).
     widget.store.refund(_child.id, _debited % 60);
-    if (!widget.standalone) {
+    if (close && !widget.standalone) {
       Navigator.of(context).pop();
       return;
     }
@@ -252,12 +253,18 @@ class _TimerScreenState extends State<TimerScreen>
       _remaining = Duration.zero;
       _chosen = min(_defaultChoice, _bank);
     });
-    _hold(); // child mode: held again until the next countdown
+    _hold(); // held again until the next countdown
   }
 
-  /// Child mode, choose phase: a parent unlocks the app to leave it.
+  /// Choose phase, held: a parent unlocks the screen to leave it.
   Future<void> _parentUnlock() async {
     if (!await widget.parent.ensure(context) || !mounted) return;
+    if (!widget.standalone) {
+      // Parent mode: back to the list of children.
+      _release();
+      Navigator.of(context).pop();
+      return;
+    }
     _parentAway = true;
     _release();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -382,9 +389,10 @@ class _TimerScreenState extends State<TimerScreen>
     Screen.setBlocked(false);
   }
 
-  /// "Stop" (paused or end screen): the countdown is over. The app goes back
-  /// to the home screen, or in child mode to the choose screen, where the
-  /// child is held again: with an empty bank, they stay there.
+  /// "Stop" (paused or end screen): the countdown is over. The screen goes
+  /// back to the choose phase, where the child is held again, in parent mode
+  /// too: Stop must not set the child free with the tablet. With an empty
+  /// bank, they stay there until a parent adds minutes or leaves with the code.
   void _stop() {
     _release();
     _leave();
@@ -394,8 +402,12 @@ class _TimerScreenState extends State<TimerScreen>
   Future<void> _parentExit() async {
     if (!await widget.parent.ensure(context) || !mounted) return;
     _release();
-    _parentAway = widget.standalone; // in child mode, free until the app comes back
-    _leave();
+    if (widget.standalone) {
+      _parentAway = true; // in child mode, free until the app comes back
+      _leave();
+    } else {
+      _leave(close: true); // parent mode: back to the list of children
+    }
   }
 
   /// End screen: withdraw a little more, then hand the screen back to the app
@@ -439,8 +451,8 @@ class _TimerScreenState extends State<TimerScreen>
 
     return PopScope<Object?>(
       // Only before a countdown may the system back button leave this screen;
-      // afterwards, the way out is Pause then Stop (or the parent code).
-      canPop: _phase == _Phase.choose && !widget.standalone,
+      // afterwards, the way out is the parent code.
+      canPop: _phase == _Phase.choose && !widget.standalone && !_blocked,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop && _counting) {
           _timer?.cancel();
@@ -474,7 +486,7 @@ class _TimerScreenState extends State<TimerScreen>
                     height: 48,
                     child: Row(
                       children: [
-                        if (_phase == _Phase.choose && !widget.standalone)
+                        if (_phase == _Phase.choose && !widget.standalone && !_blocked)
                           IconButton(
                             iconSize: 32,
                             color: kInk,
@@ -642,7 +654,7 @@ class _TimerScreenState extends State<TimerScreen>
             ),
           ],
         ),
-        if (widget.standalone && _blocked) ...[
+        if (_blocked) ...[
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: _parentUnlock,
